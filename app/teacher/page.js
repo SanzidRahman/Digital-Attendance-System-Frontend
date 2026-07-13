@@ -11,24 +11,24 @@ export default function TeacherDashboard() {
     const [qrImage, setQrImage] = useState("");
     const [expiresAt, setExpiresAt] = useState(null);
     const [timeLeft, setTimeLeft] = useState(45);
-    
+
     // Class start inputs
     const [cls, setCls] = useState("10");
     const [section, setSection] = useState("A");
     const [subject, setSubject] = useState("Mathematics");
     const [lat, setLat] = useState(23.8103); // Dhaka coordinates default
     const [lng, setLng] = useState(90.4125);
-    
+
     // Manual Attendance / Logs state
     const [students, setStudents] = useState([]);
     const [manualRecords, setManualRecords] = useState({}); // { studentId: "present"|"absent"|"late" }
     const [dailyLogs, setDailyLogs] = useState([]);
     const [activeTab, setActiveTab] = useState("qr"); // qr, manual, reports
-    
+
     // Socket / Timer references
     const socketRef = useRef(null);
     const timerRef = useRef(null);
-    
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -126,7 +126,7 @@ export default function TeacherDashboard() {
             });
 
             setSuccess("Class session started! QR Code is active.");
-            
+
             // Auto fetch daily report for this subject
             fetchDailyReport();
         } catch (err) {
@@ -176,7 +176,7 @@ export default function TeacherDashboard() {
         try {
             const studentList = await api.get(`/students?class=${cls}&section=${section}`);
             setStudents(studentList);
-            
+
             // Set default status to present
             const records = {};
             studentList.forEach(s => {
@@ -271,11 +271,10 @@ export default function TeacherDashboard() {
                                 if (tab === "manual") loadStudentList();
                                 if (tab === "reports") fetchDailyReport();
                             }}
-                            className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 transition-all duration-200 ${
-                                activeTab === tab
-                                    ? "border-blue-500 text-blue-400"
-                                    : "border-transparent text-zinc-400 hover:text-zinc-200"
-                            }`}
+                            className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 transition-all duration-200 ${activeTab === tab
+                                ? "border-blue-500 text-blue-400"
+                                : "border-transparent text-zinc-400 hover:text-zinc-200"
+                                }`}
                         >
                             {tab === "qr" ? "📱 QR কোড হাজিরা" : tab === "manual" ? "✏️ ম্যানুয়াল হাজিরা" : "📄 আজকের হাজিরা রিপোর্ট"}
                         </button>
@@ -299,7 +298,7 @@ export default function TeacherDashboard() {
                         {/* Class Setup / Control panel */}
                         <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-6">
                             <h3 className="text-md font-bold text-zinc-200">📚 ক্লাস সেটআপ</h3>
-                            
+
                             <div className="space-y-4">
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">বিষয় (Subject)</label>
@@ -309,9 +308,8 @@ export default function TeacherDashboard() {
                                         onChange={(e) => setSubject(e.target.value)}
                                         className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                     >
-                                        <option value="Mathematics">Mathematics</option>
-                                        <option value="Physics">Physics</option>
-                                        <option value="Chemistry">Chemistry</option>
+                                        <option value="Advance ICT">Advance ICT</option>
+
                                     </select>
                                 </div>
 
@@ -324,9 +322,8 @@ export default function TeacherDashboard() {
                                             onChange={(e) => setCls(e.target.value)}
                                             className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                         >
-                                            <option value="8">Class 8</option>
-                                            <option value="9">Class 9</option>
-                                            <option value="10">Class 10</option>
+
+                                            <option value="BEd-2026">BEd-2026</option>
                                         </select>
                                     </div>
                                     <div className="space-y-1">
@@ -340,6 +337,7 @@ export default function TeacherDashboard() {
                                             <option value="A">Section A</option>
                                             <option value="B">Section B</option>
                                             <option value="C">Section C</option>
+                                            <option value="D">Section D</option>
                                         </select>
                                     </div>
                                 </div>
@@ -446,15 +444,14 @@ export default function TeacherDashboard() {
                                                             <button
                                                                 key={status}
                                                                 onClick={() => handleManualStatusChange(student._id, status)}
-                                                                className={`px-3 py-1 rounded-full text-xs font-semibold capitalize border transition-all duration-200 ${
-                                                                    manualRecords[student._id] === status
-                                                                        ? status === "present"
-                                                                            ? "bg-emerald-500/15 border-emerald-500 text-emerald-400 shadow-md shadow-emerald-500/5"
-                                                                            : status === "late"
+                                                                className={`px-3 py-1 rounded-full text-xs font-semibold capitalize border transition-all duration-200 ${manualRecords[student._id] === status
+                                                                    ? status === "present"
+                                                                        ? "bg-emerald-500/15 border-emerald-500 text-emerald-400 shadow-md shadow-emerald-500/5"
+                                                                        : status === "late"
                                                                             ? "bg-yellow-500/15 border-yellow-500 text-yellow-400 shadow-md shadow-yellow-500/5"
                                                                             : "bg-red-500/15 border-red-500 text-red-400 shadow-md shadow-red-500/5"
-                                                                        : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300"
-                                                                }`}
+                                                                    : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300"
+                                                                    }`}
                                                             >
                                                                 {status}
                                                             </button>
@@ -514,13 +511,12 @@ export default function TeacherDashboard() {
                                                 </td>
                                                 <td className="px-6 py-4 uppercase text-xs tracking-wider font-semibold">{log.method}</td>
                                                 <td className="px-6 py-4">
-                                                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                                                        log.status === "present"
-                                                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                                            : log.status === "late"
+                                                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${log.status === "present"
+                                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                        : log.status === "late"
                                                             ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
                                                             : "bg-red-500/10 text-red-400 border border-red-500/20"
-                                                    }`}>
+                                                        }`}>
                                                         {log.status}
                                                     </span>
                                                 </td>

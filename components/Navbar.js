@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export default function Navbar() {
@@ -41,14 +42,14 @@ export default function Navbar() {
         <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-zinc-950/70 backdrop-blur-xl transition-all duration-300">
             <div className="mx-auto flex max-w-7xl h-16 items-center justify-between px-6 sm:px-8">
                 {/* Brand */}
-                <a href="/" className="flex items-center gap-3">
+                <Link href="/" className="flex items-center gap-3">
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 font-bold text-white shadow-lg shadow-blue-500/20">
                         ডি
                     </span>
                     <span className="text-xl font-bold bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent sm:text-2xl">
                         ডিজিটাল Attendance
                     </span>
-                </a>
+                </Link>
 
                 {/* User Status / Actions */}
                 {user ? (
@@ -67,12 +68,12 @@ export default function Navbar() {
                         </button>
                     </div>
                 ) : (
-                    <a
+                    <Link
                         href="/"
                         className="rounded-full bg-blue-600 hover:bg-blue-500 px-4 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-500/10 transition-all duration-200 hover:scale-105"
                     >
                         Sign In
-                    </a>
+                    </Link>
                 )}
             </div>
         </header>

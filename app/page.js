@@ -229,9 +229,8 @@ export default function Home() {
                                             onChange={(e) => setCls(e.target.value)}
                                             className="w-full bg-zinc-950/80 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 text-zinc-100 placeholder-zinc-600 transition-all duration-200"
                                         >
-                                            <option value="8">Class 8</option>
-                                            <option value="9">Class 9</option>
-                                            <option value="10">Class 10</option>
+                                            <option value="8">BEd-2026</option>
+
                                         </select>
                                     </div>
                                     <div className="space-y-2">
@@ -244,6 +243,7 @@ export default function Home() {
                                             <option value="A">Section A</option>
                                             <option value="B">Section B</option>
                                             <option value="C">Section C</option>
+                                            <option value="C">Section D</option>
                                         </select>
                                     </div>
                                 </div>
