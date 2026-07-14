@@ -13,9 +13,9 @@ export default function TeacherDashboard() {
     const [timeLeft, setTimeLeft] = useState(45);
 
     // Class start inputs
-    const [cls, setCls] = useState("10");
+    const [cls, setCls] = useState("BEd-2026");
     const [section, setSection] = useState("A");
-    const [subject, setSubject] = useState("Mathematics");
+    const [subject, setSubject] = useState("");
     const [lat, setLat] = useState(23.8103); // Dhaka coordinates default
     const [lng, setLng] = useState(90.4125);
 
