@@ -170,6 +170,11 @@ export default function TeacherDashboard() {
 
     const endClassSession = async () => {
         if (!session) return;
+        const confirmed = window.confirm(
+            "End this class session? Students will no longer be able to use this QR code."
+        );
+        if (!confirmed) return;
+
         setError("");
         setSuccess("");
         setLoading(true);
