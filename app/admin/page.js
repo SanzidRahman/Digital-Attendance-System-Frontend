@@ -52,7 +52,7 @@ export default function AdminDashboard() {
         fetchDashboardData();
 
         // Socket listener for real-time updates
-        const socket = io("http://localhost:8000");
+        const socket = io("https://digital-attendance-system-backend-production.up.railway.app");
 
         socket.on("attendance:new", (log) => {
             // Append check-in log
@@ -92,7 +92,7 @@ export default function AdminDashboard() {
 
     const getReportUrl = (format) => {
         const token = typeof window !== "undefined" ? localStorage.getItem("token") : "";
-        return `http://localhost:8000/api/reports/${format}?token=${token}`;
+        return `https://digital-attendance-system-backend-production.up.railway.app/api/reports/${format}?token=${token}`;
     };
 
     if (loading) {
@@ -188,8 +188,8 @@ export default function AdminDashboard() {
                                 <AreaChart data={trendData}>
                                     <defs>
                                         <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
@@ -213,7 +213,7 @@ export default function AdminDashboard() {
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                             </span>
                         </h2>
-                        
+
                         <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-zinc-800">
                             {notificationFeed.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-center text-zinc-500 py-12">
@@ -224,13 +224,12 @@ export default function AdminDashboard() {
                                 notificationFeed.map((notif) => (
                                     <div key={notif.id} className="p-3 bg-zinc-900/80 rounded-xl border border-zinc-800/80 text-[11px] space-y-1 hover:border-zinc-700/80 transition-all duration-200">
                                         <div className="flex items-center justify-between">
-                                            <span className={`px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
-                                                notif.type === "SMS"
-                                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                                    : notif.type === "WhatsApp"
+                                            <span className={`px-2 py-0.5 rounded font-bold uppercase tracking-wider ${notif.type === "SMS"
+                                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                : notif.type === "WhatsApp"
                                                     ? "bg-green-500/10 text-green-400 border border-green-500/20"
                                                     : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                                            }`}>
+                                                }`}>
                                                 {notif.type}
                                             </span>
                                             <span className="text-[10px] text-zinc-500">{notif.timestamp}</span>
@@ -271,19 +270,18 @@ export default function AdminDashboard() {
                                             <td className="px-6 py-4 font-mono">{log.roll}</td>
                                             <td className="px-6 py-4">{log.time}</td>
                                             <td className="px-6 py-4">
-                                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                                                    log.status === "present"
-                                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                                        : log.status === "late"
+                                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${log.status === "present"
+                                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                    : log.status === "late"
                                                         ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
                                                         : "bg-red-500/10 text-red-400 border border-red-500/20"
-                                                }`}>
+                                                    }`}>
                                                     {log.status === "present" ? "Present" : log.status === "late" ? "Late" : "Absent"}
                                                 </span>
                                             </td>
                                         </tr>
                                     ))
-                                ) }
+                                )}
                             </tbody>
                         </table>
                     </div>
