@@ -150,7 +150,7 @@ export default function TeacherDashboard() {
             console.error("Error rotating QR:", err);
             // A session can be ended from another tab/device while this page is open.
             // Stop the timer so it does not keep retrying a session the server no longer has.
-            if (err.status === 404) {
+            if (err.status === 404 || err.status === 409) {
                 setSession(null);
                 setQrImage("");
                 setExpiresAt(null);
