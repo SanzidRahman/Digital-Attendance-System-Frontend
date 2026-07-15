@@ -9,27 +9,27 @@ export default function StudentDashboard() {
     // Check-in state
     const [token, setToken] = useState("");
     const [sessionId, setSessionId] = useState("");
-    const [lat, setLat] = useState(23.8103); // default Dhaka coords
-    const [lng, setLng] = useState(90.4125);
+    const [lat, setLat] = useState(""); // default Dhaka coords
+    const [lng, setLng] = useState("");
     const [mockGPS, setMockGPS] = useState(false); // allow simulating coordinate changes
     const [scannerActive, setScannerActive] = useState(false);
-    
+
     // Stats & History state
     const [history, setHistory] = useState([]);
     const [stats, setStats] = useState({ total: 0, present: 0, percentage: "0.0" });
     const [historyMonth, setHistoryMonth] = useState("");
-    
+
     // Leave Application state
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
     const [reason, setReason] = useState("");
     const [leaves, setLeaves] = useState([]);
-    
+
     const [activeTab, setActiveTab] = useState("checkin"); // checkin, history, leave
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
-    
+
     const scannerRef = useRef(null);
 
     // Get current GPS on mount
@@ -91,7 +91,7 @@ export default function StudentDashboard() {
                 setToken(payload.token);
                 // Trigger check-in automatically
                 triggerCheckIn(payload.sessionId, payload.token);
-                
+
                 // Stop camera
                 if (scannerRef.current) {
                     scannerRef.current.clear();
@@ -118,7 +118,7 @@ export default function StudentDashboard() {
                     fps: 10,
                     qrbox: 250
                 });
-                scanner.render(handleCameraCheckIn, (err) => {});
+                scanner.render(handleCameraCheckIn, (err) => { });
                 scannerRef.current = scanner;
             }, 100);
         }
@@ -195,11 +195,10 @@ export default function StudentDashboard() {
                                 setActiveTab(tab);
                                 fetchHistory();
                             }}
-                            className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 transition-all duration-200 ${
-                                activeTab === tab
+                            className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 transition-all duration-200 ${activeTab === tab
                                     ? "border-blue-500 text-blue-400"
                                     : "border-transparent text-zinc-400 hover:text-zinc-200"
-                            }`}
+                                }`}
                         >
                             {tab === "checkin" ? "📱 ক্লাসে হাজিরা (Check-In)" : tab === "history" ? "📅 হাজিরা ইতিহাস (History)" : "✉️ ছুটির আবেদন (Leave)"}
                         </button>
@@ -223,18 +222,17 @@ export default function StudentDashboard() {
                         {/* Camera Scanner */}
                         <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-xl flex flex-col items-center justify-center space-y-4 min-h-[350px]">
                             <h3 className="text-sm font-bold text-zinc-200">📷 ক্যামেরা দিয়ে কিউআর কোড স্ক্যান</h3>
-                            
+
                             {scannerActive && (
                                 <div id="reader" className="w-full max-w-sm rounded-lg overflow-hidden bg-black border border-zinc-800"></div>
                             )}
 
                             <button
                                 onClick={toggleScanner}
-                                className={`px-6 py-2.5 rounded-xl text-xs font-semibold tracking-wide text-white transition-all duration-200 shadow-md ${
-                                    scannerActive
+                                className={`px-6 py-2.5 rounded-xl text-xs font-semibold tracking-wide text-white transition-all duration-200 shadow-md ${scannerActive
                                         ? "bg-red-600 hover:bg-red-500"
                                         : "bg-blue-600 hover:bg-blue-500"
-                                }`}
+                                    }`}
                             >
                                 {scannerActive ? "⏹ ক্যামেরা বন্ধ করুন" : "📸 স্ক্যানার চালু করুন"}
                             </button>
@@ -271,9 +269,8 @@ export default function StudentDashboard() {
                                         <span className="text-xs text-zinc-400">📍 Mock GPS Location</span>
                                         <button
                                             onClick={() => setMockGPS(!mockGPS)}
-                                            className={`px-3 py-1 rounded text-[10px] font-bold uppercase transition-all duration-200 ${
-                                                mockGPS ? "bg-indigo-600 text-white" : "bg-zinc-800 text-zinc-400"
-                                            }`}
+                                            className={`px-3 py-1 rounded text-[10px] font-bold uppercase transition-all duration-200 ${mockGPS ? "bg-indigo-600 text-white" : "bg-zinc-800 text-zinc-400"
+                                                }`}
                                         >
                                             {mockGPS ? "Custom Simulator Active" : "Using Real Device GPS"}
                                         </button>
@@ -381,13 +378,12 @@ export default function StudentDashboard() {
                                                     </td>
                                                     <td className="px-6 py-4 uppercase text-xs font-semibold">{log.method}</td>
                                                     <td className="px-6 py-4">
-                                                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                                                            log.status === "present"
+                                                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${log.status === "present"
                                                                 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                                                                 : log.status === "late"
-                                                                ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
-                                                                : "bg-red-500/10 text-red-400 border border-red-500/20"
-                                                        }`}>
+                                                                    ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                                                                    : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                            }`}>
                                                             {log.status}
                                                         </span>
                                                     </td>
@@ -407,7 +403,7 @@ export default function StudentDashboard() {
                         {/* Application Form */}
                         <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-6 h-fit">
                             <h3 className="text-sm font-bold text-zinc-200">✉️ নতুন ছুটির আবেদনপত্র</h3>
-                            
+
                             <form className="space-y-4" onSubmit={handleApplyLeave}>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
@@ -474,13 +470,12 @@ export default function StudentDashboard() {
                                                 </td>
                                                 <td className="px-6 py-4 text-xs">{leave.reason}</td>
                                                 <td className="px-6 py-4">
-                                                    <span className={`px-2 py-0.5 rounded text-xs font-semibold capitalize ${
-                                                        leave.status === "approved"
+                                                    <span className={`px-2 py-0.5 rounded text-xs font-semibold capitalize ${leave.status === "approved"
                                                             ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                                                             : leave.status === "rejected"
-                                                            ? "bg-red-500/10 text-red-400 border border-red-500/20"
-                                                            : "bg-zinc-800 text-zinc-400 border border-zinc-700"
-                                                    }`}>
+                                                                ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                                : "bg-zinc-800 text-zinc-400 border border-zinc-700"
+                                                        }`}>
                                                         {leave.status}
                                                     </span>
                                                 </td>
