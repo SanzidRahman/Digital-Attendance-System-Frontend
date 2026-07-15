@@ -68,7 +68,9 @@ export default function TeacherDashboard() {
         const updateTimer = () => {
             const now = new Date().getTime();
             const exp = new Date(expiresAt).getTime();
-            const diff = Math.max(Math.floor((exp - now) / 1000), 0);
+            // Round up so a new 45-second QR starts at 45, not 44 because
+            // a few milliseconds passed between receiving it and rendering.
+            const diff = Math.max(Math.ceil((exp - now) / 1000), 0);
             setTimeLeft(diff);
 
             if (diff <= 0) {
@@ -100,8 +102,11 @@ export default function TeacherDashboard() {
 
             setSession({ sessionId: data.sessionId, class: cls, section, subject });
             setQrImage(data.qrDataUrl);
-            setExpiresAt(data.expiresAt);
-            setTimeLeft(data.rotateSeconds || 45);
+            const rotateSeconds = data.rotateSeconds || 45;
+            // Use the browser clock for the visible countdown. This avoids a
+            // server/client clock difference making a brand-new QR show 0.
+            setExpiresAt(new Date(Date.now() + rotateSeconds * 1000).toISOString());
+            setTimeLeft(rotateSeconds);
 
             // Connect Socket.io & Join session room
             const socket = io("https://digital-attendance-system-backend-production.up.railway.app/api");
@@ -111,7 +116,9 @@ export default function TeacherDashboard() {
             // Listen for QR code updates (in case another device triggers rotation)
             socket.on("qr:update", (update) => {
                 setQrImage(update.qrDataUrl);
-                setExpiresAt(update.expiresAt);
+                const rotateSeconds = update.rotateSeconds || 45;
+                setExpiresAt(new Date(Date.now() + rotateSeconds * 1000).toISOString());
+                setTimeLeft(rotateSeconds);
             });
 
             // Listen for real-time check-ins to update the local log
@@ -145,7 +152,9 @@ export default function TeacherDashboard() {
         try {
             const data = await api.post(`/qr/${session.sessionId}/rotate`);
             setQrImage(data.qrDataUrl);
-            setExpiresAt(data.expiresAt);
+            const rotateSeconds = data.rotateSeconds || 45;
+            setExpiresAt(new Date(Date.now() + rotateSeconds * 1000).toISOString());
+            setTimeLeft(rotateSeconds);
         } catch (err) {
             console.error("Error rotating QR:", err);
             // A session can be ended from another tab/device while this page is open.
