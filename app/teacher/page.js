@@ -28,6 +28,9 @@ export default function TeacherDashboard() {
     // Socket / Timer references
     const socketRef = useRef(null);
     const timerRef = useRef(null);
+    const rotationInFlightRef = useRef(false);
+
+
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -136,16 +139,34 @@ export default function TeacherDashboard() {
         }
     };
 
-    const rotateQR = async () => {
-        if (!session) return;
+    async function rotateQR() {
+        if (!session || rotationInFlightRef.current) return;
+        rotationInFlightRef.current = true;
         try {
             const data = await api.post(`/qr/${session.sessionId}/rotate`);
             setQrImage(data.qrDataUrl);
             setExpiresAt(data.expiresAt);
         } catch (err) {
             console.error("Error rotating QR:", err);
+            // A session can be ended from another tab/device while this page is open.
+            // Stop the timer so it does not keep retrying a session the server no longer has.
+            if (err.status === 404) {
+                setSession(null);
+                setQrImage("");
+                setExpiresAt(null);
+                if (timerRef.current) clearInterval(timerRef.current);
+                if (socketRef.current) {
+                    socketRef.current.disconnect();
+                    socketRef.current = null;
+                }
+                setError("This class session is no longer active. Start a new class session to generate a QR code.");
+            } else {
+                setError(err.message || "Failed to rotate the QR code.");
+            }
+        } finally {
+            rotationInFlightRef.current = false;
         }
-    };
+    }
 
     const endClassSession = async () => {
         if (!session) return;
@@ -253,7 +274,7 @@ export default function TeacherDashboard() {
 
                 {/* Header */}
                 <div className="border-b border-zinc-800 pb-6">
-                    <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-indigo-200 to-purple-400 bg-clip-text text-transparent sm:text-3xl">
+                    <h1 className="text-2xl font-bold bg-linear-to-r from-blue-400 via-indigo-200 to-purple-400 bg-clip-text text-transparent sm:text-3xl">
                         👨‍🏫 শিক্ষক প্যানেল (Teacher Dashboard)
                     </h1>
                     <p className="text-xs text-zinc-400 mt-1">
