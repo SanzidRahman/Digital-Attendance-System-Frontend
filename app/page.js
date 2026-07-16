@@ -64,20 +64,15 @@ export default function Home() {
             email: formData.get("email"),
             password: formData.get("password"),
             role,
-            campus: "Dhaka Campus", // or make it a field
+            campus: "Mymensingh Campus", // or make it a field
         };
 
         // Build profileData based on role
         if (role === "student") {
             payload.profileData = {
-                studentId: formData.get("studentId"),
                 roll: formData.get("roll"),
                 class: formData.get("class"),
                 section: formData.get("section"),
-                guardianContact: {
-                    phone: "+8801700000000", // could be made a field
-                    email: "guardian@test.com",
-                },
             };
         } else if (role === "teacher") {
             payload.profileData = {
@@ -119,14 +114,14 @@ export default function Home() {
         <div className="min-h-screen flex flex-col bg-zinc-950 font-sans text-zinc-100">
             <Navbar />
 
-            <main className="flex-1 flex items-center justify-center py-6 px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-zinc-900 via-zinc-950 to-black">
+            <main className="flex-1 flex items-center justify-center py-4 px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-[radial-gradient(ellipse_at_top,var(--tw-gradient-stops))] from-zinc-900 via-zinc-950 to-black">
                 {/* Background Blobs */}
                 <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-blue-600/10 blur-[120px] pointer-events-none"></div>
                 <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-80 h-80 rounded-full bg-indigo-600/10 blur-[120px] pointer-events-none"></div>
 
                 <div className="w-full max-w-md space-y-8 z-10">
                     <div className="text-center">
-                        <h2 className="text-3xl font-extrabold tracking-tight bg-linear-to-r from-blue-400 via-indigo-200 to-purple-400 bg-clip-text text-transparent sm:text-4xl">
+                        <h2 className="text-3xl py-2 font-extrabold tracking-tight bg-linear-to-r from-blue-400 via-indigo-200 to-purple-400 bg-clip-text text-transparent sm:text-3xl">
                             {isRegister ? "নতুন অ্যাকাউন্ট তৈরি করুন" : "অ্যাটেনডেন্স পোর্টালে স্বাগতম"}
                         </h2>
                         <p className="mt-2 text-sm text-zinc-400">
@@ -143,7 +138,7 @@ export default function Home() {
 
                     <div className="bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-2xl rounded-2xl p-8 shadow-2xl shadow-black/40">
                         {isRegister ? (
-                            <RegisterForm onSubmit={handleRegister} role={role} loading={loading} error={error} />
+                            <RegisterForm onSubmit={handleRegister} role={role} loading={loading} error={error} isRegister={isRegister} />
                         ) : (
                             <LoginForm onSubmit={handleLogin} loading={loading} error={error} />
                         )}

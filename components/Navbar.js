@@ -43,10 +43,10 @@ export default function Navbar() {
             <div className="mx-auto flex max-w-7xl h-16 items-center justify-between px-6 sm:px-8">
                 {/* Brand */}
                 <Link href="/" className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 font-bold text-white shadow-lg shadow-blue-500/20">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-linear-to-tr from-blue-600 to-indigo-600 font-bold text-white shadow-lg shadow-blue-500/20">
                         ডি
                     </span>
-                    <span className="text-xl font-bold bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent sm:text-2xl">
+                    <span className="text-md font-bold bg-linear-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent sm:text-2xl">
                         ডিজিটাল Attendance
                     </span>
                 </Link>
@@ -70,7 +70,7 @@ export default function Navbar() {
                 ) : (
                     <Link
                         href="/"
-                        className="rounded-full bg-blue-600 hover:bg-blue-500 px-4 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-500/10 transition-all duration-200 hover:scale-105"
+                        className="rounded-full bg-blue-600 hover:bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white shadow-md shadow-blue-500/10 transition-all duration-200 hover:scale-105"
                     >
                         Sign In
                     </Link>

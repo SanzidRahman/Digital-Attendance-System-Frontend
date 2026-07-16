@@ -1,5 +1,5 @@
 export const RoleSelector = ({ role, setRole, isRegister, setIsRegister }) => {
-    const roles = ["student", "teacher", "parent", "admin"];
+    const roles = ["student", "teacher", "admin"];
     const labels = { student: "ছাত্র", teacher: "শিক্ষক", admin: "এডমিন" };
 
     return (
@@ -14,7 +14,7 @@ export const RoleSelector = ({ role, setRole, isRegister, setIsRegister }) => {
                         if (isRegister && r === "parent") setIsRegister(false);
                     }}
                     className={`flex-1 rounded-md py-1.5 text-xs font-semibold capitalize tracking-wide transition-all duration-300 ${role === r
-                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20"
+                        ? "bg-linear-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-600/20"
                         : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40"
                         }`}
                 >
