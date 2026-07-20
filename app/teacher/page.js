@@ -14,7 +14,7 @@ export default function TeacherDashboard() {
 
     // Class start inputs
     const [cls, setCls] = useState("BEd-2026");
-    const [section, setSection] = useState("A");
+    const [section, setSection] = useState("All");
     const [subject, setSubject] = useState("Advance ICT");
     const [lat, setLat] = useState(24.765452); // Mymensingh coordinates default
     const [lng, setLng] = useState(90.401466);
@@ -279,6 +279,8 @@ export default function TeacherDashboard() {
         }
     };
 
+
+
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans">
             <Navbar />
@@ -369,10 +371,8 @@ export default function TeacherDashboard() {
                                             onChange={(e) => setSection(e.target.value)}
                                             className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                         >
-                                            <option value="A">Section A</option>
-                                            <option value="B">Section B</option>
-                                            <option value="C">Section C</option>
-                                            <option value="D">Section D</option>
+                                            <option value="All"> All Section</option>
+
                                         </select>
                                     </div>
                                 </div>
@@ -523,6 +523,7 @@ export default function TeacherDashboard() {
                                     <tr>
                                         <th className="px-6 py-3">শিক্ষার্থী</th>
                                         <th className="px-6 py-3">রোল</th>
+                                        <th className="px-6 py-3">সেকশন</th>
                                         <th className="px-6 py-3">চেক-ইন সময়</th>
                                         <th className="px-6 py-3">পদ্ধতি (Method)</th>
                                         <th className="px-6 py-3">স্ট্যাটাস</th>
@@ -541,6 +542,7 @@ export default function TeacherDashboard() {
                                             <tr key={log._id} className="hover:bg-zinc-900/10">
                                                 <td className="px-6 py-4 font-semibold text-zinc-200">{log.student?.name}</td>
                                                 <td className="px-6 py-4 font-mono">{log.student?.roll}</td>
+                                                <td className="px-6 py-4 font-mono">{log.section}</td>
                                                 <td className="px-6 py-4">
                                                     {log.checkInTime ? new Date(log.checkInTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : "—"}
                                                 </td>
