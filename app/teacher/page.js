@@ -12,7 +12,6 @@ export default function TeacherDashboard() {
     // Session state
     const [session, setSession] = useState(null); // active QR session details
     const [qrImage, setQrImage] = useState("");
-    const [expiresAt, setExpiresAt] = useState(null);
     const [timeLeft, setTimeLeft] = useState(45);
 
     // Class start inputs
@@ -31,6 +30,7 @@ export default function TeacherDashboard() {
     // Socket / Timer references
     const socketRef = useRef(null);
     const timerRef = useRef(null);
+    const timeLeftRef = useRef(45);
     const rotationInFlightRef = useRef(false);
 
 
@@ -68,8 +68,8 @@ export default function TeacherDashboard() {
         try {
             const data = await api.post(`/qr/${session.sessionId}/rotate`);
             setQrImage(data.qrDataUrl);
-            setExpiresAt(data.expiresAt);
-            setTimeLeft(data.rotateSeconds || 45);
+            timeLeftRef.current = data.rotateSeconds || 45;
+            setTimeLeft(timeLeftRef.current);
         } catch (err) {
             console.error("Error rotating QR:", err);
             // A session can be ended from another tab/device while this page is open.
@@ -77,7 +77,6 @@ export default function TeacherDashboard() {
             if (err.status === 404 || err.status === 409) {
                 setSession(null);
                 setQrImage("");
-                setExpiresAt(null);
                 if (timerRef.current) clearInterval(timerRef.current);
                 if (socketRef.current) {
                     socketRef.current.disconnect();
@@ -94,31 +93,27 @@ export default function TeacherDashboard() {
 
     // Set up timer for QR code rotation
     useEffect(() => {
-        if (!session || !expiresAt) return;
+        if (!session) return;
 
         if (timerRef.current) clearInterval(timerRef.current);
 
         const updateTimer = () => {
-            const now = new Date().getTime();
-            const exp = new Date(expiresAt).getTime();
-            // Round up so a new 45-second QR starts at 45, not 44 because
-            // a few milliseconds passed between receiving it and rendering.
-            const diff = Math.max(Math.ceil((exp - now) / 1000), 0);
-            setTimeLeft(diff);
+            const remaining = Math.max(timeLeftRef.current - 1, 0);
+            timeLeftRef.current = remaining;
+            setTimeLeft(remaining);
 
-            if (diff <= 0) {
+            if (remaining <= 0) {
                 // Time's up! Rotate QR token
                 rotateQR();
             }
         };
 
-        updateTimer();
         timerRef.current = setInterval(updateTimer, 1000);
 
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, [session, expiresAt]);
+    }, [session]);
 
     const startClassSession = async () => {
         setError("");
@@ -137,7 +132,7 @@ export default function TeacherDashboard() {
             setSession({ sessionId: data.sessionId, class: cls, section, subject });
             setQrImage(data.qrDataUrl);
             const rotateSeconds = data.rotateSeconds || 45;
-            setExpiresAt(data.expiresAt);
+            timeLeftRef.current = rotateSeconds;
             setTimeLeft(rotateSeconds);
 
             // Connect Socket.io & Join session room
@@ -148,8 +143,8 @@ export default function TeacherDashboard() {
             // Listen for QR code updates (in case another device triggers rotation)
             socket.on("qr:update", (update) => {
                 setQrImage(update.qrDataUrl);
-                setExpiresAt(update.expiresAt);
-                setTimeLeft(update.rotateSeconds || 45);
+                timeLeftRef.current = update.rotateSeconds || 45;
+                setTimeLeft(timeLeftRef.current);
             });
 
             // Listen for real-time check-ins to update the local log
