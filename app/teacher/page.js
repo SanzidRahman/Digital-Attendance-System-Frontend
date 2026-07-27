@@ -8,6 +8,18 @@ import io from "socket.io-client";
 const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ||
     (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/api\/?$/, "");
 
+const getCurrentLocation = () => new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+        reject(new Error("GPS is not supported by this browser."));
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(
+        (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+        () => reject(new Error("Location permission is required to start a class.")),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+});
+
 export default function TeacherDashboard() {
     // Session state
     const [session, setSession] = useState(null); // active QR session details
@@ -18,8 +30,8 @@ export default function TeacherDashboard() {
     const [cls, setCls] = useState("BEd-2026");
     const [section, setSection] = useState("All");
     const [subject, setSubject] = useState("Advance ICT");
-    const [lat, setLat] = useState(24.765452); // Mymensingh coordinates default
-    const [lng, setLng] = useState(90.401466);
+    const [lat, setLat] = useState(null);
+    const [lng, setLng] = useState(null);
 
     // Manual Attendance / Logs state
     const [students, setStudents] = useState([]);
@@ -48,7 +60,7 @@ export default function TeacherDashboard() {
                     setLng(pos.coords.longitude);
                 },
                 (err) => {
-                    console.log("GPS access denied, using Dhaka defaults");
+                    console.log("GPS access denied");
                 }
             );
         }
@@ -120,12 +132,15 @@ export default function TeacherDashboard() {
         setSuccess("");
         setLoading(true);
         try {
+            const location = await getCurrentLocation();
+            setLat(location.lat);
+            setLng(location.lng);
             const data = await api.post("/qr/start", {
                 class: cls,
                 section,
                 subject,
-                lat,
-                lng
+                lat: location.lat,
+                lng: location.lng
             });
 
 

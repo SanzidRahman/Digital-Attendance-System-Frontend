@@ -5,6 +5,18 @@ import Navbar from "../../components/Navbar";
 import api from "../../components/api";
 import { Html5QrcodeScanner } from "html5-qrcode";
 
+const getCurrentLocation = () => new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+        reject(new Error("GPS is not supported by this browser."));
+        return;
+    }
+    navigator.geolocation.getCurrentPosition(
+        (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+        () => reject(new Error("Location permission is required to mark attendance.")),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+});
+
 export default function StudentDashboard() {
     // Check-in state
     const [token, setToken] = useState("");
@@ -40,7 +52,7 @@ export default function StudentDashboard() {
                     setLat(pos.coords.latitude);
                     setLng(pos.coords.longitude);
                 },
-                (err) => console.log("GPS access blocked, using defaults")
+                () => console.log("GPS access blocked")
             );
         }
     }, [mockGPS]);
@@ -132,11 +144,15 @@ export default function StudentDashboard() {
         setSuccess("");
         setLoading(true);
         try {
+            // Get a fresh location at check-in, not a stale one from page load.
+            const location = mockGPS ? { lat, lng } : await getCurrentLocation();
+            setLat(location.lat);
+            setLng(location.lng);
             const res = await api.post("/attendance/scan", {
                 sessionId: sId || sessionId,
                 token: tok || token,
-                lat,
-                lng
+                lat: location.lat,
+                lng: location.lng
             });
             setSuccess("Check-in success! Attendance marked.");
             setToken("");
