@@ -52,7 +52,10 @@ export default function AdminDashboard() {
         fetchDashboardData();
 
         // Socket listener for real-time updates
-        const socket = io("https://digital-attendance-system-backend-production.up.railway.app");
+        const socket = io(
+            process.env.NEXT_PUBLIC_SOCKET_URL ||
+            "https://digital-attendance-system-backend-production.up.railway.app/api"
+        );
 
         socket.on("attendance:new", (log) => {
             // Append check-in log
