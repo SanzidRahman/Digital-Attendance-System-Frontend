@@ -186,7 +186,8 @@ export default function TeacherDashboard() {
             await api.post(`/qr/${session.sessionId}/end`);
             setSession(null);
             setQrImage("");
-            setExpiresAt(null);
+            timeLeftRef.current = 45;
+            setTimeLeft(45);
             if (timerRef.current) clearInterval(timerRef.current);
             if (socketRef.current) {
                 socketRef.current.disconnect();
