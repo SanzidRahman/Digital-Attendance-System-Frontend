@@ -100,6 +100,7 @@ export default function TeacherDashboard() {
                 lng
             });
 
+
             setSession({ sessionId: data.sessionId, class: cls, section, subject });
             setQrImage(data.qrDataUrl);
             const rotateSeconds = data.rotateSeconds || 45;
@@ -280,7 +281,6 @@ export default function TeacherDashboard() {
     };
 
 
-
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans">
             <Navbar />
@@ -365,13 +365,19 @@ export default function TeacherDashboard() {
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শাখা (Section)</label>
+
+
                                         <select
                                             disabled={!!session}
                                             value={section}
                                             onChange={(e) => setSection(e.target.value)}
                                             className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                         >
-                                            <option value="All"> All Section</option>
+                                            <option value="All">All Sections</option>
+                                            <option value="A">Section A</option>
+                                            <option value="B">Section B</option>
+                                            <option value="C">Section C</option>
+                                            <option value="D">Section D</option>
 
                                         </select>
                                     </div>
