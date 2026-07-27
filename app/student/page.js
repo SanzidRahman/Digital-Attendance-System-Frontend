@@ -215,8 +215,8 @@ export default function StudentDashboard() {
                                 fetchHistory();
                             }}
                             className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 transition-all duration-200 ${activeTab === tab
-                                    ? "border-blue-500 text-blue-400"
-                                    : "border-transparent text-zinc-400 hover:text-zinc-200"
+                                ? "border-blue-500 text-blue-400"
+                                : "border-transparent text-zinc-400 hover:text-zinc-200"
                                 }`}
                         >
                             {tab === "checkin" ? "📱 ক্লাসে হাজিরা (Check-In)" : tab === "history" ? "📅 হাজিরা ইতিহাস (History)" : "✉️ ছুটির আবেদন (Leave)"}
@@ -249,8 +249,8 @@ export default function StudentDashboard() {
                             <button
                                 onClick={toggleScanner}
                                 className={`px-6 py-2.5 rounded-xl text-xs font-semibold tracking-wide text-white transition-all duration-200 shadow-md ${scannerActive
-                                        ? "bg-red-600 hover:bg-red-500"
-                                        : "bg-blue-600 hover:bg-blue-500"
+                                    ? "bg-red-600 hover:bg-red-500"
+                                    : "bg-blue-600 hover:bg-blue-500"
                                     }`}
                             >
                                 {scannerActive ? "⏹ ক্যামেরা বন্ধ করুন" : "📸 স্ক্যানার চালু করুন"}
@@ -321,7 +321,7 @@ export default function StudentDashboard() {
                                     )}
 
                                     <div className="text-[10px] text-zinc-500">
-                                        Dhaka Campus Reference Coordinates: <code className="bg-zinc-900 px-1 py-0.5 rounded text-zinc-300">23.8103, 90.4125</code>.
+                                        Mymensingh Campus Reference Coordinates: <code className="bg-zinc-900 px-1 py-0.5 rounded text-zinc-300">24.7654, 90.4014</code>.
                                         (You can adjust these to simulate being too far from class to verify GPS rejection).
                                     </div>
                                 </div>
@@ -398,10 +398,10 @@ export default function StudentDashboard() {
                                                     <td className="px-6 py-4 uppercase text-xs font-semibold">{log.method}</td>
                                                     <td className="px-6 py-4">
                                                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${log.status === "present"
-                                                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                                                : log.status === "late"
-                                                                    ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
-                                                                    : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                            : log.status === "late"
+                                                                ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                                                                : "bg-red-500/10 text-red-400 border border-red-500/20"
                                                             }`}>
                                                             {log.status}
                                                         </span>
@@ -490,10 +490,10 @@ export default function StudentDashboard() {
                                                 <td className="px-6 py-4 text-xs">{leave.reason}</td>
                                                 <td className="px-6 py-4">
                                                     <span className={`px-2 py-0.5 rounded text-xs font-semibold capitalize ${leave.status === "approved"
-                                                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                                            : leave.status === "rejected"
-                                                                ? "bg-red-500/10 text-red-400 border border-red-500/20"
-                                                                : "bg-zinc-800 text-zinc-400 border border-zinc-700"
+                                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                        : leave.status === "rejected"
+                                                            ? "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                            : "bg-zinc-800 text-zinc-400 border border-zinc-700"
                                                         }`}>
                                                         {leave.status}
                                                     </span>
