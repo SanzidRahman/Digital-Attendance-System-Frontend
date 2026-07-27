@@ -5,6 +5,9 @@ import Navbar from "../../components/Navbar";
 import api from "../../components/api";
 import io from "socket.io-client";
 
+const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL ||
+    (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api").replace(/\/api\/?$/, "");
+
 export default function TeacherDashboard() {
     // Session state
     const [session, setSession] = useState(null); // active QR session details
@@ -59,6 +62,36 @@ export default function TeacherDashboard() {
         };
     }, []);
 
+    const rotateQR = async () => {
+        if (!session || rotationInFlightRef.current) return;
+        rotationInFlightRef.current = true;
+        try {
+            const data = await api.post(`/qr/${session.sessionId}/rotate`);
+            setQrImage(data.qrDataUrl);
+            setExpiresAt(data.expiresAt);
+            setTimeLeft(data.rotateSeconds || 45);
+        } catch (err) {
+            console.error("Error rotating QR:", err);
+            // A session can be ended from another tab/device while this page is open.
+            // Stop the timer so it does not keep retrying a session the server no longer has.
+            if (err.status === 404 || err.status === 409) {
+                setSession(null);
+                setQrImage("");
+                setExpiresAt(null);
+                if (timerRef.current) clearInterval(timerRef.current);
+                if (socketRef.current) {
+                    socketRef.current.disconnect();
+                    socketRef.current = null;
+                }
+                setError("This class session is no longer active. Start a new class session to generate a QR code.");
+            } else {
+                setError(err.message || "Failed to rotate the QR code.");
+            }
+        } finally {
+            rotationInFlightRef.current = false;
+        }
+    };
+
     // Set up timer for QR code rotation
     useEffect(() => {
         if (!session || !expiresAt) return;
@@ -104,22 +137,19 @@ export default function TeacherDashboard() {
             setSession({ sessionId: data.sessionId, class: cls, section, subject });
             setQrImage(data.qrDataUrl);
             const rotateSeconds = data.rotateSeconds || 45;
-            // Use the browser clock for the visible countdown. This avoids a
-            // server/client clock difference making a brand-new QR show 0.
-            setExpiresAt(new Date(Date.now() + rotateSeconds * 1000).toISOString());
+            setExpiresAt(data.expiresAt);
             setTimeLeft(rotateSeconds);
 
             // Connect Socket.io & Join session room
-            const socket = io("https://digital-attendance-system-backend-production.up.railway.app/api");
+            const socket = io(SOCKET_URL);
             socketRef.current = socket;
             socket.emit("session:join", data.sessionId);
 
             // Listen for QR code updates (in case another device triggers rotation)
             socket.on("qr:update", (update) => {
                 setQrImage(update.qrDataUrl);
-                const rotateSeconds = update.rotateSeconds || 45;
-                setExpiresAt(new Date(Date.now() + rotateSeconds * 1000).toISOString());
-                setTimeLeft(rotateSeconds);
+                setExpiresAt(update.expiresAt);
+                setTimeLeft(update.rotateSeconds || 45);
             });
 
             // Listen for real-time check-ins to update the local log
@@ -146,37 +176,6 @@ export default function TeacherDashboard() {
             setLoading(false);
         }
     };
-
-    async function rotateQR() {
-        if (!session || rotationInFlightRef.current) return;
-        rotationInFlightRef.current = true;
-        try {
-            const data = await api.post(`/qr/${session.sessionId}/rotate`);
-            setQrImage(data.qrDataUrl);
-            const rotateSeconds = data.rotateSeconds || 45;
-            setExpiresAt(new Date(Date.now() + rotateSeconds * 1000).toISOString());
-            setTimeLeft(rotateSeconds);
-        } catch (err) {
-            console.error("Error rotating QR:", err);
-            // A session can be ended from another tab/device while this page is open.
-            // Stop the timer so it does not keep retrying a session the server no longer has.
-            if (err.status === 404 || err.status === 409) {
-                setSession(null);
-                setQrImage("");
-                setExpiresAt(null);
-                if (timerRef.current) clearInterval(timerRef.current);
-                if (socketRef.current) {
-                    socketRef.current.disconnect();
-                    socketRef.current = null;
-                }
-                setError("This class session is no longer active. Start a new class session to generate a QR code.");
-            } else {
-                setError(err.message || "Failed to rotate the QR code.");
-            }
-        } finally {
-            rotationInFlightRef.current = false;
-        }
-    }
 
     const endClassSession = async () => {
         if (!session) return;
@@ -210,7 +209,7 @@ export default function TeacherDashboard() {
         setError("");
         setLoading(true);
         try {
-            const studentList = await api.get(`/students?class=${cls}&section=${section}`);
+            const studentList = await api.get(`/students?class=${encodeURIComponent(cls)}&section=${encodeURIComponent(section)}`);
             setStudents(studentList);
 
             // Set default status to present
@@ -261,7 +260,7 @@ export default function TeacherDashboard() {
 
     const fetchDailyReport = async () => {
         try {
-            const data = await api.get(`/attendance/daily-report?class=${cls}&section=${section}&subject=${subject}`);
+            const data = await api.get(`/attendance/daily-report?class=${encodeURIComponent(cls)}&section=${encodeURIComponent(section)}&subject=${encodeURIComponent(subject)}`);
             setDailyLogs(data.records);
         } catch (err) {
             console.error(err);

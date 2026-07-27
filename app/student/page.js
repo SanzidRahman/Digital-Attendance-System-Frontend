@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import Navbar from "../../components/Navbar";
 import api from "../../components/api";
 import { Html5QrcodeScanner } from "html5-qrcode";
@@ -46,9 +46,10 @@ export default function StudentDashboard() {
     }, [mockGPS]);
 
     // Fetch personal history
-    const fetchHistory = async () => {
+    const fetchHistory = useCallback(async () => {
         try {
-            const data = await api.get(`/attendance/history?month=${historyMonth}`);
+            const query = historyMonth ? `?month=${encodeURIComponent(historyMonth)}` : "";
+            const data = await api.get(`/attendance/history${query}`);
             setHistory(data.records);
             setStats({
                 total: data.total,
@@ -58,29 +59,31 @@ export default function StudentDashboard() {
         } catch (err) {
             console.error(err);
         }
-    };
+    }, [historyMonth]);
+
+    const fetchLeaveApplications = useCallback(async () => {
+        try {
+            const data = await api.get("/students/leave");
+            setLeaves(data);
+        } catch (err) {
+            console.error(err);
+        }
+    }, []);
 
     // Load history and leaves
     useEffect(() => {
-        fetchHistory();
-        fetchLeaveApplications();
-    }, [historyMonth]);
+        const timer = setTimeout(() => {
+            void fetchHistory();
+            void fetchLeaveApplications();
+        }, 0);
+        return () => clearTimeout(timer);
+    }, [fetchHistory, fetchLeaveApplications]);
 
-    const fetchLeaveApplications = async () => {
-        // Since there is no direct leave application listing endpoint, we simulate or fetch
-        // Let's assume we can fetch student details or write a custom endpoint if needed.
-        // Actually student list endpoint list leaves. Let's just mock leaves in-state for now or fetch.
-        // Let's mock a default leave application if none exists
-        setLeaves([
-            {
-                _id: "1",
-                fromDate: new Date().toISOString().slice(0, 10),
-                toDate: new Date(Date.now() + 86400000 * 2).toISOString().slice(0, 10),
-                reason: "Fever and cold symptoms",
-                status: "pending"
-            }
-        ]);
-    };
+    useEffect(() => () => {
+        if (scannerRef.current) {
+            void scannerRef.current.clear();
+        }
+    }, []);
 
     const handleCameraCheckIn = (decodedText) => {
         try {

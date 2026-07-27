@@ -21,7 +21,7 @@ export default function ParentDashboard() {
         setStudent(null);
         setLoading(true);
         try {
-            const data = await api.get(`/students/parent-view?search=${search}`);
+            const data = await api.get(`/students/parent-view?search=${encodeURIComponent(search.trim())}`);
             setStudent(data.student);
             setHistory(data.records);
             setStats({
