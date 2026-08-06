@@ -359,7 +359,7 @@ export default function TeacherDashboard() {
                                             {lat ? `${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E` : "Detecting..."}
                                         </span>
                                     </div>
-                                    <p className="text-[10px] text-zinc-500">শিক্ষার্থীর উপস্থিতি ভেরিফাই করতে এই অবস্থান ব্যবহৃত হবে (৫০মি ব্যাসার্ধ)।</p>
+                                    <p className="text-[10px] text-zinc-500">শিক্ষার্থীর উপস্থিতি ভেরিফাই করতে এই অবস্থান ব্যবহৃত হবে (১০০মি ব্যাসার্ধ)।</p>
                                 </div>
 
                                 {session ? (
@@ -410,7 +410,7 @@ export default function TeacherDashboard() {
                                     <div className="grid grid-cols-2 gap-4 text-left text-[11px] text-zinc-500 pt-2 border-t border-zinc-850">
                                         <div>
                                             <span className="block font-semibold text-zinc-400">GEOFENCE LIMIT:</span>
-                                            Maximum 50 meters distance from center.
+                                            Maximum 100 meters distance from center.
                                         </div>
                                         <div>
                                             <span className="block font-semibold text-zinc-400">DEVICE SECURITY:</span>

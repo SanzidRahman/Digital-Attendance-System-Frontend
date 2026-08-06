@@ -413,7 +413,7 @@ export default function StudentDashboard() {
                                         <div className="text-[10px] text-zinc-500 border-t border-zinc-850 pt-3">
                                             Mymensingh Campus Reference Coordinates: <code className="bg-zinc-900 px-1.5 py-0.5 rounded text-zinc-300">24.7654, 90.4014</code>.
                                             <br />
-                                            (You can adjust these values to test distance failures &gt; 50 meters or accuracy failures &gt; 30 meters).
+                                            (You can adjust these values to test distance failures &gt; 100 meters or accuracy failures &gt; 30 meters).
                                         </div>
                                     )}
                                 </div>
