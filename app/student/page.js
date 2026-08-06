@@ -10,8 +10,8 @@ const getCurrentLocation = () => new Promise((resolve, reject) => {
         return;
     }
     navigator.geolocation.getCurrentPosition(
-        (position) => resolve({ 
-            lat: position.coords.latitude, 
+        (position) => resolve({
+            lat: position.coords.latitude,
             lng: position.coords.longitude,
             accuracy: position.coords.accuracy
         }),
@@ -56,9 +56,9 @@ export default function StudentDashboard() {
             if (data && data.session) {
                 setActiveSession(data.session);
                 setHasAttended(data.hasAttended);
-                
-                // Calculate remaining seconds
-                const now = new Date().getTime();
+
+                // Calculate remaining seconds using serverTime to avoid local clock drift
+                const now = new Date(data.serverTime || new Date()).getTime();
                 const end = new Date(data.session.endTime).getTime();
                 const remaining = Math.max(Math.floor((end - now) / 1000), 0);
                 setTimeRemaining(remaining);
