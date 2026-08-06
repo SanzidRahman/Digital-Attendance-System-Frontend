@@ -22,16 +22,15 @@ const getCurrentLocation = () => new Promise((resolve, reject) => {
 
 export default function TeacherDashboard() {
     // Session state
-    const [session, setSession] = useState(null); // active QR session details
-    const [qrImage, setQrImage] = useState("");
-    const [timeLeft, setTimeLeft] = useState(45);
+    const [session, setSession] = useState(null); // active GPS session details
+    const [timeLeft, setTimeLeft] = useState(180); // 3 minutes default
 
     // Class start inputs
     const [cls, setCls] = useState("BEd-2026");
     const [section, setSection] = useState("All");
     const [subject, setSubject] = useState("Advance ICT");
-    const [lat, setLat] = useState(null);
-    const [lng, setLng] = useState(null);
+    const [lat, setLat] = useState(24.7654);
+    const [lng, setLng] = useState(90.4014);
 
     // Manual Attendance / Logs state
     const [students, setStudents] = useState([]);
@@ -42,10 +41,7 @@ export default function TeacherDashboard() {
     // Socket / Timer references
     const socketRef = useRef(null);
     const timerRef = useRef(null);
-    const timeLeftRef = useRef(45);
-    const rotationInFlightRef = useRef(false);
-
-
+    const timeLeftRef = useRef(180);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -66,7 +62,7 @@ export default function TeacherDashboard() {
         }
     }, []);
 
-    // Clean up timers on unmount
+    // Clean up timers and sockets on unmount
     useEffect(() => {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
@@ -74,36 +70,7 @@ export default function TeacherDashboard() {
         };
     }, []);
 
-    const rotateQR = async () => {
-        if (!session || rotationInFlightRef.current) return;
-        rotationInFlightRef.current = true;
-        try {
-            const data = await api.post(`/qr/${session.sessionId}/rotate`);
-            setQrImage(data.qrDataUrl);
-            timeLeftRef.current = data.rotateSeconds || 45;
-            setTimeLeft(timeLeftRef.current);
-        } catch (err) {
-            console.error("Error rotating QR:", err);
-            // A session can be ended from another tab/device while this page is open.
-            // Stop the timer so it does not keep retrying a session the server no longer has.
-            if (err.status === 404 || err.status === 409) {
-                setSession(null);
-                setQrImage("");
-                if (timerRef.current) clearInterval(timerRef.current);
-                if (socketRef.current) {
-                    socketRef.current.disconnect();
-                    socketRef.current = null;
-                }
-                setError("This class session is no longer active. Start a new class session to generate a QR code.");
-            } else {
-                setError(err.message || "Failed to rotate the QR code.");
-            }
-        } finally {
-            rotationInFlightRef.current = false;
-        }
-    };
-
-    // Set up timer for QR code rotation
+    // Set up timer for attendance countdown
     useEffect(() => {
         if (!session) return;
 
@@ -115,8 +82,9 @@ export default function TeacherDashboard() {
             setTimeLeft(remaining);
 
             if (remaining <= 0) {
-                // Time's up! Rotate QR token
-                rotateQR();
+                // Session expired, clear timer
+                if (timerRef.current) clearInterval(timerRef.current);
+                setSuccess("Attendance session has closed automatically (3 minutes limit reached).");
             }
         };
 
@@ -135,6 +103,7 @@ export default function TeacherDashboard() {
             const location = await getCurrentLocation();
             setLat(location.lat);
             setLng(location.lng);
+            
             const data = await api.post("/qr/start", {
                 class: cls,
                 section,
@@ -143,24 +112,15 @@ export default function TeacherDashboard() {
                 lng: location.lng
             });
 
-
+            const duration = data.durationSeconds || 180;
+            timeLeftRef.current = duration;
+            setTimeLeft(duration);
             setSession({ sessionId: data.sessionId, class: cls, section, subject });
-            setQrImage(data.qrDataUrl);
-            const rotateSeconds = data.rotateSeconds || 45;
-            timeLeftRef.current = rotateSeconds;
-            setTimeLeft(rotateSeconds);
 
             // Connect Socket.io & Join session room
             const socket = io(SOCKET_URL);
             socketRef.current = socket;
             socket.emit("session:join", data.sessionId);
-
-            // Listen for QR code updates (in case another device triggers rotation)
-            socket.on("qr:update", (update) => {
-                setQrImage(update.qrDataUrl);
-                timeLeftRef.current = update.rotateSeconds || 45;
-                setTimeLeft(timeLeftRef.current);
-            });
 
             // Listen for real-time check-ins to update the local log
             socket.on("attendance:new", (log) => {
@@ -169,17 +129,17 @@ export default function TeacherDashboard() {
                         student: { name: log.studentName, roll: log.roll },
                         checkInTime: new Date(),
                         status: log.status,
-                        method: "qr",
+                        method: "gps",
                         _id: Math.random().toString()
                     },
                     ...prev
                 ]);
             });
 
-            setSuccess("Class session started! QR Code is active.");
-
+            setSuccess("GPS Attendance Session started! Students can now mark their attendance.");
+            
             // Auto fetch daily report for this subject
-            fetchDailyReport();
+            void fetchDailyReport();
         } catch (err) {
             setError(err.message || "Failed to start class session.");
         } finally {
@@ -190,7 +150,7 @@ export default function TeacherDashboard() {
     const endClassSession = async () => {
         if (!session) return;
         const confirmed = window.confirm(
-            "End this class session? Students will no longer be able to use this QR code."
+            "Close this attendance session? Students will no longer be able to check in."
         );
         if (!confirmed) return;
 
@@ -200,15 +160,14 @@ export default function TeacherDashboard() {
         try {
             await api.post(`/qr/${session.sessionId}/end`);
             setSession(null);
-            setQrImage("");
-            timeLeftRef.current = 45;
-            setTimeLeft(45);
+            timeLeftRef.current = 180;
+            setTimeLeft(180);
             if (timerRef.current) clearInterval(timerRef.current);
             if (socketRef.current) {
                 socketRef.current.disconnect();
                 socketRef.current = null;
             }
-            setSuccess("Class ended successfully.");
+            setSuccess("Attendance session closed successfully.");
         } catch (err) {
             setError(err.message || "Failed to end class session.");
         } finally {
@@ -261,7 +220,7 @@ export default function TeacherDashboard() {
             });
 
             setSuccess("Manual attendance recorded successfully!");
-            fetchDailyReport();
+            void fetchDailyReport();
         } catch (err) {
             setError(err.message || "Failed to save attendance.");
         } finally {
@@ -290,6 +249,11 @@ export default function TeacherDashboard() {
         }
     };
 
+    const formatTimeRemaining = (seconds) => {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes}:${remainingSeconds < 10 ? "0" : ""}${remainingSeconds}`;
+    };
 
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans">
@@ -300,11 +264,11 @@ export default function TeacherDashboard() {
 
                 {/* Header */}
                 <div className="border-b border-zinc-800 pb-6">
-                    <h1 className="text-2xl font-bold bg-linear-to-r from-blue-400 via-indigo-200 to-purple-400 bg-clip-text text-transparent sm:text-3xl">
+                    <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-indigo-200 to-purple-400 bg-clip-text text-transparent sm:text-3xl">
                         👨‍🏫 শিক্ষক প্যানেল (Teacher Dashboard)
                     </h1>
                     <p className="text-xs text-zinc-400 mt-1">
-                        ক্লাসের কিউআর কোড জেনারেট করুন, লাইভ হাজিরা দেখুন অথবা ম্যানুয়ালি হাজিরা গ্রহণ করুন
+                        জিপিএস এবং ডিভাইস লক ভিত্তিক ক্লাস উপস্থিতি শুরু করুন এবং লাইভ হাজিরা মনিটর করুন
                     </p>
                 </div>
 
@@ -315,15 +279,15 @@ export default function TeacherDashboard() {
                             key={tab}
                             onClick={() => {
                                 setActiveTab(tab);
-                                if (tab === "manual") loadStudentList();
-                                if (tab === "reports") fetchDailyReport();
+                                if (tab === "manual") void loadStudentList();
+                                if (tab === "reports") void fetchDailyReport();
                             }}
                             className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 transition-all duration-200 ${activeTab === tab
                                 ? "border-blue-500 text-blue-400"
                                 : "border-transparent text-zinc-400 hover:text-zinc-200"
                                 }`}
                         >
-                            {tab === "qr" ? "📱 QR কোড হাজিরা" : tab === "manual" ? "✏️ ম্যানুয়াল হাজিরা" : "📄 আজকের হাজিরা রিপোর্ট"}
+                            {tab === "qr" ? "📱 GPS ভিত্তিক হাজিরা" : tab === "manual" ? "✏️ ম্যানুয়াল হাজিরা" : "📄 আজকের হাজিরা রিপোর্ট"}
                         </button>
                     ))}
                 </div>
@@ -339,7 +303,7 @@ export default function TeacherDashboard() {
                     </div>
                 )}
 
-                {/* Tab: QR Code Session */}
+                {/* Tab: GPS Session */}
                 {activeTab === "qr" && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* Class Setup / Control panel */}
@@ -356,7 +320,6 @@ export default function TeacherDashboard() {
                                         className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                     >
                                         <option value="Advance ICT">Advance ICT</option>
-
                                     </select>
                                 </div>
 
@@ -369,14 +332,11 @@ export default function TeacherDashboard() {
                                             onChange={(e) => setCls(e.target.value)}
                                             className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                         >
-
                                             <option value="BEd-2026">BEd-2026</option>
                                         </select>
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শাখা (Section)</label>
-
-
                                         <select
                                             disabled={!!session}
                                             value={section}
@@ -388,7 +348,6 @@ export default function TeacherDashboard() {
                                             <option value="B">Section B</option>
                                             <option value="C">Section C</option>
                                             <option value="D">Section D</option>
-
                                         </select>
                                     </div>
                                 </div>
@@ -396,9 +355,11 @@ export default function TeacherDashboard() {
                                 <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-850 text-[11px] text-zinc-400 space-y-1">
                                     <div className="flex justify-between">
                                         <span>📍 GPS Coordinates:</span>
-                                        <span className="font-semibold text-zinc-200">{lat.toFixed(4)}° N, {lng.toFixed(4)}° E</span>
+                                        <span className="font-semibold text-zinc-200">
+                                            {lat ? `${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E` : "Detecting..."}
+                                        </span>
                                     </div>
-                                    <p className="text-[10px] text-zinc-500">শিক্ষার্থীর উপস্থিতি ভেরিফাই করতে এই অবস্থান ব্যবহৃত হবে (১০০মি ব্যাসার্ধ)।</p>
+                                    <p className="text-[10px] text-zinc-500">শিক্ষার্থীর উপস্থিতি ভেরিফাই করতে এই অবস্থান ব্যবহৃত হবে (৫০মি ব্যাসার্ধ)।</p>
                                 </div>
 
                                 {session ? (
@@ -407,7 +368,7 @@ export default function TeacherDashboard() {
                                         disabled={loading}
                                         className="w-full bg-red-600 hover:bg-red-500 text-white rounded-xl py-3 text-xs font-semibold transition-all duration-200 shadow-lg shadow-red-500/10 active:scale-98"
                                     >
-                                        ⏹ ক্লাস শেষ করুন (End Class)
+                                        ⏹ ক্লাস শেষ করুন (End Session)
                                     </button>
                                 ) : (
                                     <button
@@ -415,39 +376,56 @@ export default function TeacherDashboard() {
                                         disabled={loading}
                                         className="w-full bg-blue-600 hover:bg-blue-500 text-white rounded-xl py-3 text-xs font-semibold transition-all duration-200 shadow-lg shadow-blue-500/10 active:scale-98"
                                     >
-                                        ▶ ক্লাস শুরু করুন (Start Class)
+                                        ▶ হাজিরা শুরু করুন (Start Attendance)
                                     </button>
                                 )}
                             </div>
                         </div>
 
-                        {/* Center: Dynamic QR Code Display */}
-                        <div className="lg:col-span-2 bg-zinc-900/30 border border-zinc-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-xl flex flex-col items-center justify-center min-h-[350px]">
+                        {/* Center: GPS Active Session Status Display */}
+                        <div className="lg:col-span-2 bg-zinc-900/30 border border-zinc-800/80 rounded-2xl p-8 shadow-xl backdrop-blur-xl flex flex-col items-center justify-center min-h-[350px]">
                             {session ? (
-                                <div className="text-center space-y-4">
-                                    <div className="bg-zinc-950 p-2 rounded-2xl border border-zinc-800 shadow-inner inline-block">
-                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                        <img src={qrImage} alt="QR Code Session" className="w-64 h-64 mx-auto rounded-lg" />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <p className="text-sm font-semibold text-zinc-200">মোবাইল দিয়ে হাজিরা মার্ক করতে স্ক্যান করুন</p>
-                                        <div className="flex items-center justify-center gap-2 text-xs">
-                                            <span className="h-2 w-2 rounded-full bg-green-500 animate-ping"></span>
-                                            <span className="text-red-400 font-semibold">⏳ কোড পরিবর্তন হবে {timeLeft} সেকেন্ডে</span>
+                                <div className="text-center space-y-6 max-w-md w-full">
+                                    <div className="w-32 h-32 mx-auto rounded-full border-4 border-dashed border-indigo-500 flex items-center justify-center animate-[spin_20s_linear_infinite]">
+                                        <div className="w-24 h-24 rounded-full bg-indigo-600/10 flex items-center justify-center">
+                                            <span className="text-3xl">📡</span>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={rotateQR}
-                                        className="text-xs bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-4 py-1.5 rounded-full font-semibold transition-all duration-200"
-                                    >
-                                        🔄 নতুন কিউআর কোড জেনারেট
-                                    </button>
+
+                                    <div className="space-y-2">
+                                        <h3 className="text-lg font-bold text-zinc-100">GPS Attendance is Running</h3>
+                                        <p className="text-xs text-zinc-400">
+                                            Students of Class <code className="bg-zinc-950 px-2 py-0.5 rounded text-indigo-400">{session.class}</code> section <code className="bg-zinc-950 px-2 py-0.5 rounded text-indigo-400">{session.section}</code> can mark check-in.
+                                        </p>
+                                    </div>
+
+                                    <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between text-sm">
+                                        <span className="text-zinc-500">Time Remaining:</span>
+                                        <span className={`font-bold flex items-center gap-1.5 ${timeLeft <= 30 ? "text-red-400 animate-pulse" : "text-emerald-400"}`}>
+                                            <span className="h-2 w-2 rounded-full bg-current animate-ping"></span>
+                                            {timeLeft > 0 ? formatTimeRemaining(timeLeft) : "Expired"}
+                                        </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 text-left text-[11px] text-zinc-500 pt-2 border-t border-zinc-850">
+                                        <div>
+                                            <span className="block font-semibold text-zinc-400">GEOFENCE LIMIT:</span>
+                                            Maximum 50 meters distance from center.
+                                        </div>
+                                        <div>
+                                            <span className="block font-semibold text-zinc-400">DEVICE SECURITY:</span>
+                                            Locked to unique device. Duplicate accounts blocked.
+                                        </div>
+                                    </div>
                                 </div>
                             ) : (
-                                <div className="text-center text-zinc-500 space-y-2 py-12">
-                                    <span className="text-6xl block">⬛</span>
-                                    <h3 className="text-sm font-bold text-zinc-400">QR Code Session Active No</h3>
-                                    <p className="text-xs text-zinc-500">ক্লাস শুরু করার পর এখানে অটোমেটিক রটেটিং কিউআর কোড প্রদর্শিত হবে।</p>
+                                <div className="text-center text-zinc-500 space-y-3 py-12">
+                                    <span className="text-6xl block">📡</span>
+                                    <h3 className="text-sm font-bold text-zinc-400">No Active Attendance Session</h3>
+                                    <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+                                        হাজিরা শুরু করার জন্য বাম পাশের সেটআপ ফরম থেকে বিষয় ও শাখা সিলেক্ট করে "হাজিরা শুরু করুন" বাটনে ক্লিক করুন। 
+                                        এতে ৩ মিনিটের জন্য জিপিএস ভিত্তিক হাজিরা চালু হবে।
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -549,7 +527,7 @@ export default function TeacherDashboard() {
                                 <tbody className="divide-y divide-zinc-850">
                                     {dailyLogs.length === 0 ? (
                                         <tr>
-                                            <td colSpan="6" className="px-6 py-8 text-center text-zinc-500 text-xs">
+                                            <td colSpan="7" className="px-6 py-8 text-center text-zinc-500 text-xs">
                                                 আজকের কোনো হাজিরা লগ পাওয়া যায়নি।
                                             </td>
                                         </tr>
@@ -579,7 +557,7 @@ export default function TeacherDashboard() {
                                                             log.status !== st && (
                                                                 <button
                                                                     key={st}
-                                                                    onClick={() => editAttendanceRecord(log._id, st)}
+                                                                    onClick={() => void editAttendanceRecord(log._id, st)}
                                                                     className="px-2 py-0.5 text-[10px] rounded bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700"
                                                                 >
                                                                     Make {st}

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import Navbar from "../../components/Navbar";
 import api from "../../components/api";
-import { Html5QrcodeScanner } from "html5-qrcode";
 
 const getCurrentLocation = () => new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
@@ -11,20 +10,28 @@ const getCurrentLocation = () => new Promise((resolve, reject) => {
         return;
     }
     navigator.geolocation.getCurrentPosition(
-        (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+        (position) => resolve({ 
+            lat: position.coords.latitude, 
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy
+        }),
         () => reject(new Error("Location permission is required to mark attendance.")),
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
 });
 
 export default function StudentDashboard() {
-    // Check-in state
-    const [token, setToken] = useState("");
-    const [sessionId, setSessionId] = useState("");
-    const [lat, setLat] = useState(""); // default Dhaka coords
-    const [lng, setLng] = useState("");
-    const [mockGPS, setMockGPS] = useState(false); // allow simulating coordinate changes
-    const [scannerActive, setScannerActive] = useState(false);
+    // Active session details
+    const [activeSession, setActiveSession] = useState(null);
+    const [hasAttended, setHasAttended] = useState(false);
+    const [timeRemaining, setTimeRemaining] = useState(0);
+    const [checkingSession, setCheckingSession] = useState(false);
+
+    // Geolocation coordinates
+    const [lat, setLat] = useState(24.7654); // default coords
+    const [lng, setLng] = useState(90.4014);
+    const [mockAccuracy, setMockAccuracy] = useState(15);
+    const [mockGPS, setMockGPS] = useState(false); // allow simulating coordinates
 
     // Stats & History state
     const [history, setHistory] = useState([]);
@@ -42,7 +49,28 @@ export default function StudentDashboard() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
-    const scannerRef = useRef(null);
+    // Fetch active session from backend
+    const fetchActiveSession = useCallback(async () => {
+        try {
+            const data = await api.get("/attendance/active");
+            if (data && data.session) {
+                setActiveSession(data.session);
+                setHasAttended(data.hasAttended);
+                
+                // Calculate remaining seconds
+                const now = new Date().getTime();
+                const end = new Date(data.session.endTime).getTime();
+                const remaining = Math.max(Math.floor((end - now) / 1000), 0);
+                setTimeRemaining(remaining);
+            } else {
+                setActiveSession(null);
+                setHasAttended(false);
+                setTimeRemaining(0);
+            }
+        } catch (err) {
+            console.error("Error fetching active session:", err);
+        }
+    }, []);
 
     // Get current GPS on mount
     useEffect(() => {
@@ -51,11 +79,32 @@ export default function StudentDashboard() {
                 (pos) => {
                     setLat(pos.coords.latitude);
                     setLng(pos.coords.longitude);
+                    setMockAccuracy(pos.coords.accuracy);
                 },
                 () => console.log("GPS access blocked")
             );
         }
     }, [mockGPS]);
+
+    // Periodically fetch active session when student is on the check-in tab
+    useEffect(() => {
+        if (activeTab === "checkin") {
+            void fetchActiveSession();
+            const interval = setInterval(() => {
+                void fetchActiveSession();
+            }, 5000);
+            return () => clearInterval(interval);
+        }
+    }, [activeTab, fetchActiveSession]);
+
+    // Timer countdown
+    useEffect(() => {
+        if (timeRemaining <= 0) return;
+        const interval = setInterval(() => {
+            setTimeRemaining((prev) => Math.max(prev - 1, 0));
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [timeRemaining]);
 
     // Fetch personal history
     const fetchHistory = useCallback(async () => {
@@ -91,73 +140,42 @@ export default function StudentDashboard() {
         return () => clearTimeout(timer);
     }, [fetchHistory, fetchLeaveApplications]);
 
-    useEffect(() => () => {
-        if (scannerRef.current) {
-            void scannerRef.current.clear();
-        }
-    }, []);
-
-    const handleCameraCheckIn = (decodedText) => {
-        try {
-            // Decoded text will be JSON string: {"sessionId": "...", "token": "..."}
-            const payload = JSON.parse(decodedText);
-            if (payload.sessionId && payload.token) {
-                setSessionId(payload.sessionId);
-                setToken(payload.token);
-                // Trigger check-in automatically
-                triggerCheckIn(payload.sessionId, payload.token);
-
-                // Stop camera
-                if (scannerRef.current) {
-                    scannerRef.current.clear();
-                    setScannerActive(false);
-                }
-            }
-        } catch (e) {
-            setError("Invalid QR Code payload.");
-        }
-    };
-
-    const toggleScanner = () => {
-        setError("");
-        setSuccess("");
-        if (scannerActive) {
-            if (scannerRef.current) {
-                scannerRef.current.clear();
-            }
-            setScannerActive(false);
-        } else {
-            setScannerActive(true);
-            setTimeout(() => {
-                const scanner = new Html5QrcodeScanner("reader", {
-                    fps: 10,
-                    qrbox: 250
-                });
-                scanner.render(handleCameraCheckIn, (err) => { });
-                scannerRef.current = scanner;
-            }, 100);
-        }
-    };
-
-    const triggerCheckIn = async (sId, tok) => {
+    const triggerGPSCheckIn = async () => {
         setError("");
         setSuccess("");
         setLoading(true);
         try {
-            // Get a fresh location at check-in, not a stale one from page load.
-            const location = mockGPS ? { lat, lng } : await getCurrentLocation();
-            setLat(location.lat);
-            setLng(location.lng);
-            const res = await api.post("/attendance/scan", {
-                sessionId: sId || sessionId,
-                token: tok || token,
-                lat: location.lat,
-                lng: location.lng
+            if (!activeSession) {
+                throw new Error("No active class session found.");
+            }
+
+            // Get fresh location if not using mock
+            let coords;
+            if (mockGPS) {
+                coords = { lat, lng, accuracy: mockAccuracy };
+            } else {
+                const loc = await getCurrentLocation();
+                coords = loc;
+                setLat(loc.lat);
+                setLng(loc.lng);
+                setMockAccuracy(loc.accuracy);
+            }
+
+            // Accuracy check
+            if (coords.accuracy > 30) {
+                throw new Error(`Location accuracy is too low (${Math.round(coords.accuracy)} meters). Must be under 30 meters. Please move outdoors.`);
+            }
+
+            const res = await api.post("/attendance/give", {
+                sessionId: activeSession._id,
+                lat: coords.lat,
+                lng: coords.lng,
+                accuracy: coords.accuracy
             });
+
             setSuccess("Check-in success! Attendance marked.");
-            setToken("");
-            setSessionId("");
-            fetchHistory();
+            setHasAttended(true);
+            void fetchHistory();
         } catch (err) {
             setError(err.message || "Attendance validation failed.");
         } finally {
@@ -188,6 +206,12 @@ export default function StudentDashboard() {
         }
     };
 
+    const formatTimeRemaining = (seconds) => {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes}:${remainingSeconds < 10 ? "0" : ""}${remainingSeconds}`;
+    };
+
     return (
         <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans">
             <Navbar />
@@ -201,7 +225,7 @@ export default function StudentDashboard() {
                         🧑‍🎓 শিক্ষার্থী প্যানেল (Student Portal)
                     </h1>
                     <p className="text-xs text-zinc-400 mt-1">
-                        কিউআর কোড স্ক্যান করে ক্লাসে হাজিরা দিন অথবা ছুটির আবেদনপত্র সাবমিট করুন
+                        জিও-লোকেশন এবং ডিভাইস ভেরিফিকেশন এর মাধ্যমে আপনার ক্লাসের উপস্থিতি সাবমিট করুন
                     </p>
                 </div>
 
@@ -212,7 +236,7 @@ export default function StudentDashboard() {
                             key={tab}
                             onClick={() => {
                                 setActiveTab(tab);
-                                fetchHistory();
+                                void fetchHistory();
                             }}
                             className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider border-b-2 transition-all duration-200 ${activeTab === tab
                                 ? "border-blue-500 text-blue-400"
@@ -238,54 +262,99 @@ export default function StudentDashboard() {
                 {/* Tab: Check-In */}
                 {activeTab === "checkin" && (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                        {/* Camera Scanner */}
-                        <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-xl flex flex-col items-center justify-center space-y-4 min-h-[350px]">
-                            <h3 className="text-sm font-bold text-zinc-200">📷 ক্যামেরা দিয়ে কিউআর কোড স্ক্যান</h3>
+                        {/* Today's Attendance Panel */}
+                        <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-2xl p-8 shadow-xl backdrop-blur-xl flex flex-col justify-between min-h-[350px]">
+                            <div className="space-y-6">
+                                <div className="border-b border-zinc-800 pb-3">
+                                    <h3 className="text-md font-bold text-zinc-200">📌 আজকের হাজিরা (Today's Attendance)</h3>
+                                    <p className="text-[10px] text-zinc-500 uppercase mt-0.5">Auto-detected active class session</p>
+                                </div>
 
-                            {scannerActive && (
-                                <div id="reader" className="w-full max-w-sm rounded-lg overflow-hidden bg-black border border-zinc-800"></div>
+                                {activeSession ? (
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <span className="text-[10px] font-semibold text-zinc-500 uppercase">বিষয় (Subject)</span>
+                                                <p className="text-sm font-bold text-zinc-100">{activeSession.subject}</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-[10px] font-semibold text-zinc-500 uppercase">শ্রেণী (Class)</span>
+                                                <p className="text-sm font-bold text-zinc-100">{activeSession.class}</p>
+                                            </div>
+                                            <div>
+                                                <span className="text-[10px] font-semibold text-zinc-500 uppercase">শাখা (Section)</span>
+                                                <p className="text-sm font-bold text-zinc-100">
+                                                    {activeSession.section === "All" ? "All Sections" : `Section ${activeSession.section}`}
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <span className="text-[10px] font-semibold text-zinc-500 uppercase">সময়সীমা (Time Limit)</span>
+                                                <p className="text-sm font-bold text-red-400 flex items-center gap-1">
+                                                    <span className="h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                                                    {timeRemaining > 0 ? `${formatTimeRemaining(timeRemaining)} minutes remaining` : "Expired"}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-4 bg-zinc-950/60 rounded-xl border border-zinc-850 space-y-1">
+                                            <div className="flex justify-between text-xs">
+                                                <span className="text-zinc-500">Status:</span>
+                                                {hasAttended ? (
+                                                    <span className="text-emerald-400 font-bold">Attendance Completed</span>
+                                                ) : timeRemaining > 0 ? (
+                                                    <span className="text-indigo-400 font-bold animate-pulse">Attendance Running</span>
+                                                ) : (
+                                                    <span className="text-zinc-500">Session Ended</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="py-8 text-center text-zinc-500 space-y-2">
+                                        <span className="text-5xl block">📭</span>
+                                        <p className="text-sm font-bold text-zinc-400">কোনো একটিভ ক্লাস সেশন পাওয়া যায়নি</p>
+                                        <p className="text-xs text-zinc-600">শিক্ষক ক্লাস শুরু করলে এখানে হাজিরা দেওয়ার বাটন দেখতে পাবেন।</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {activeSession && (
+                                <div className="mt-8">
+                                    {hasAttended ? (
+                                        <button
+                                            disabled
+                                            className="w-full py-3.5 bg-emerald-950/40 text-emerald-500 border border-emerald-500/20 rounded-xl text-xs font-bold uppercase tracking-wider"
+                                        >
+                                            ✓ হাজিরা মার্ক করা হয়েছে (Attendance Marked)
+                                        </button>
+                                    ) : timeRemaining > 0 ? (
+                                        <button
+                                            onClick={triggerGPSCheckIn}
+                                            disabled={loading}
+                                            className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-lg shadow-blue-500/20 active:scale-98 disabled:opacity-50 transition-all duration-200"
+                                        >
+                                            {loading ? "হাজিরা যাচাই করা হচ্ছে..." : "Give Attendance (হাজিরা দিন)"}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            disabled
+                                            className="w-full py-3.5 bg-zinc-900 text-zinc-600 border border-zinc-800 rounded-xl text-xs font-bold uppercase"
+                                        >
+                                            সময়সীমা শেষ (Session Expired)
+                                        </button>
+                                    )}
+                                </div>
                             )}
-
-                            <button
-                                onClick={toggleScanner}
-                                className={`px-6 py-2.5 rounded-xl text-xs font-semibold tracking-wide text-white transition-all duration-200 shadow-md ${scannerActive
-                                    ? "bg-red-600 hover:bg-red-500"
-                                    : "bg-blue-600 hover:bg-blue-500"
-                                    }`}
-                            >
-                                {scannerActive ? "⏹ ক্যামেরা বন্ধ করুন" : "📸 স্ক্যানার চালু করুন"}
-                            </button>
                         </div>
 
-                        {/* Manual check-in details + Mock GPS Simulator */}
+                        {/* Location Details & Simulator */}
                         <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-6">
-                            <h3 className="text-sm font-bold text-zinc-200">⌨️ ম্যানুয়াল কিউআর চেক-ইন ও জিপিএস সিমুলেশন</h3>
+                            <h3 className="text-sm font-bold text-zinc-200">📍 জিপিএস লোকেশন ভেরিফিকেশন ও সিমুলেশন</h3>
 
                             <div className="space-y-4">
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">সেশন আইডি (Session ID)</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Paste active QR Session ID"
-                                        value={sessionId}
-                                        onChange={(e) => setSessionId(e.target.value)}
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-blue-500"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">টোকেন (Token)</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Paste active rotating token"
-                                        value={token}
-                                        onChange={(e) => setToken(e.target.value)}
-                                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-100 placeholder-zinc-700 focus:outline-none focus:border-blue-500"
-                                    />
-                                </div>
-
-                                <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-xl space-y-3">
+                                <div className="p-4 bg-zinc-950 border border-zinc-850 rounded-xl space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-xs text-zinc-400">📍 Mock GPS Location</span>
+                                        <span className="text-xs text-zinc-400">📍 GPS Geolocation</span>
                                         <button
                                             onClick={() => setMockGPS(!mockGPS)}
                                             className={`px-3 py-1 rounded text-[10px] font-bold uppercase transition-all duration-200 ${mockGPS ? "bg-indigo-600 text-white" : "bg-zinc-800 text-zinc-400"
@@ -295,44 +364,68 @@ export default function StudentDashboard() {
                                         </button>
                                     </div>
 
-                                    {mockGPS && (
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wide">Latitude</span>
-                                                <input
-                                                    type="number"
-                                                    step="0.0001"
-                                                    value={lat}
-                                                    onChange={(e) => setLat(parseFloat(e.target.value))}
-                                                    className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1 text-xs"
-                                                />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wide">Longitude</span>
-                                                <input
-                                                    type="number"
-                                                    step="0.0001"
-                                                    value={lng}
-                                                    onChange={(e) => setLng(parseFloat(e.target.value))}
-                                                    className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1 text-xs"
-                                                />
-                                            </div>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wide">Latitude</span>
+                                            <input
+                                                type="number"
+                                                step="0.000001"
+                                                value={lat}
+                                                disabled={!mockGPS}
+                                                onChange={(e) => setLat(parseFloat(e.target.value))}
+                                                className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-zinc-200 disabled:opacity-60"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wide">Longitude</span>
+                                            <input
+                                                type="number"
+                                                step="0.000001"
+                                                value={lng}
+                                                disabled={!mockGPS}
+                                                onChange={(e) => setLng(parseFloat(e.target.value))}
+                                                className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-zinc-200 disabled:opacity-60"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-wide">Accuracy (meters)</span>
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                value={mockAccuracy}
+                                                disabled={!mockGPS}
+                                                onChange={(e) => setMockAccuracy(parseFloat(e.target.value))}
+                                                className="w-full bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1.5 text-xs text-zinc-200 disabled:opacity-60"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {!mockGPS && (
+                                        <div className="text-[10px] text-zinc-400 flex items-center justify-between border-t border-zinc-850 pt-3">
+                                            <span>Current Accuracy:</span>
+                                            <span className={`font-bold ${mockAccuracy <= 30 ? "text-green-400" : "text-red-400"}`}>
+                                                {Math.round(mockAccuracy)} meters {mockAccuracy <= 30 ? "✓ (Good)" : "✗ (Poor, >30m)"}
+                                            </span>
                                         </div>
                                     )}
 
-                                    <div className="text-[10px] text-zinc-500">
-                                        Mymensingh Campus Reference Coordinates: <code className="bg-zinc-900 px-1 py-0.5 rounded text-zinc-300">24.7654, 90.4014</code>.
-                                        (You can adjust these to simulate being too far from class to verify GPS rejection).
-                                    </div>
+                                    {mockGPS && (
+                                        <div className="text-[10px] text-zinc-500 border-t border-zinc-850 pt-3">
+                                            Mymensingh Campus Reference Coordinates: <code className="bg-zinc-900 px-1.5 py-0.5 rounded text-zinc-300">24.7654, 90.4014</code>.
+                                            <br />
+                                            (You can adjust these values to test distance failures &gt; 50 meters or accuracy failures &gt; 30 meters).
+                                        </div>
+                                    )}
                                 </div>
 
-                                <button
-                                    onClick={() => triggerCheckIn()}
-                                    disabled={loading || !token || !sessionId}
-                                    className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-blue-500/10 active:scale-98 disabled:opacity-50 disabled:pointer-events-none"
-                                >
-                                    ✅ হাজিরা মার্ক করুন (Mark Attendance)
-                                </button>
+                                <div className="p-4 bg-zinc-950/40 border border-zinc-900 rounded-xl space-y-2 text-xs text-zinc-500">
+                                    <p className="font-semibold text-zinc-400">🛡️ Device Security Guidelines:</p>
+                                    <ul className="list-disc pl-4 space-y-1">
+                                        <li>You are registered to one specific device ID. Switching accounts or devices requires manual reset from class coordinator.</li>
+                                        <li>Multiple logins are monitored. Logging into a second device logs you out from the previous device session.</li>
+                                        <li>Your IP Address, Browser name, and OS details are registered with each check-in for audit.</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -447,7 +540,7 @@ export default function StudentDashboard() {
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">ছুটির কারণ (Reason)</label>
+                                    <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">ছুটির कारण (Reason)</label>
                                     <textarea
                                         rows="4"
                                         required
