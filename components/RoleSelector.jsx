@@ -1,6 +1,6 @@
 export const RoleSelector = ({ role, setRole, isRegister, setIsRegister }) => {
     const roles = ["student", "teacher", "admin"];
-    const labels = { student: "ছাত্র", teacher: "শিক্ষক", admin: "এডমিন" };
+    const labels = { student: "প্রশিক্ষণার্থী", teacher: "প্রশিক্ষক", admin: "এডমিন" };
 
     return (
         <div className="flex rounded-lg bg-zinc-900/60 p-1 border border-zinc-800 backdrop-blur-md">
