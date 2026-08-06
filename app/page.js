@@ -5,6 +5,7 @@ import api from "../components/api";
 import { RoleSelector } from "@/components/RoleSelector";
 import { RegisterForm } from "@/components/RegisterForm";
 import { LoginForm } from "@/components/LoginForm";
+import { ForgotPasswordForm, ResetPasswordForm } from "@/components/RecoveryForms";
 
 
 // ---------- Main Home Component ----------
@@ -14,9 +15,15 @@ export default function Home() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
+    // Recovery State
+    const [recoveryStep, setRecoveryStep] = useState("login"); // "login", "forgot", "reset"
+    const [recoveryEmail, setRecoveryEmail] = useState("");
+    const [recoverySuccessMsg, setRecoverySuccessMsg] = useState("");
+
     const handleLogin = async (e) => {
         e.preventDefault();
         setError("");
+        setRecoverySuccessMsg("");
         setLoading(true);
 
         const formData = new FormData(e.target);
@@ -56,6 +63,7 @@ export default function Home() {
     const handleRegister = async (e) => {
         e.preventDefault();
         setError("");
+        setRecoverySuccessMsg("");
         setLoading(true);
 
         const formData = new FormData(e.target);
@@ -64,7 +72,7 @@ export default function Home() {
             email: formData.get("email"),
             password: formData.get("password"),
             role,
-            campus: "Mymensingh Campus", // or make it a field
+            campus: "Mymensingh Campus",
         };
 
         // Build profileData based on role
@@ -110,6 +118,63 @@ export default function Home() {
         }
     };
 
+    const handleRequestOTP = async (e) => {
+        e.preventDefault();
+        setError("");
+        setRecoverySuccessMsg("");
+        setLoading(true);
+
+        const formData = new FormData(e.target);
+        const email = formData.get("email");
+
+        try {
+            const data = await api.post("/auth/forgot-password", { email });
+            setRecoveryEmail(email);
+            setRecoverySuccessMsg(data.message || "OTP code sent to email successfully!");
+            setRecoveryStep("reset");
+        } catch (err) {
+            setError(err.message || "Failed to request recovery code. Make sure email is registered.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleResetPasswordSubmit = async (e) => {
+        e.preventDefault();
+        setError("");
+        setRecoverySuccessMsg("");
+        setLoading(true);
+
+        const formData = new FormData(e.target);
+        const email = formData.get("email");
+        const otp = formData.get("otp");
+        const newPassword = formData.get("newPassword");
+
+        try {
+            const data = await api.post("/auth/reset-password", { email, otp, newPassword });
+            setRecoverySuccessMsg(data.message || "Password reset successfully! Log in now.");
+            setRecoveryStep("login");
+        } catch (err) {
+            setError(err.message || "Failed to reset password. Please check your OTP code.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getHeaderTitle = () => {
+        if (isRegister) return "নতুন অ্যাকাউন্ট তৈরি করুন";
+        if (recoveryStep === "forgot") return "পাসওয়ার্ড রিকভারি করুন";
+        if (recoveryStep === "reset") return "পাসওয়ার্ড রিসেট করুন";
+        return "অ্যাটেনডেন্স পোর্টালে স্বাগতম";
+    };
+
+    const getHeaderSubtitle = () => {
+        if (isRegister) return "আপনার তথ্য দিয়ে ফিলাপ করুন";
+        if (recoveryStep === "forgot") return "OTP কোড পাওয়ার জন্য ইমেইল দিন";
+        if (recoveryStep === "reset") return "OTP এবং নতুন পাসওয়ার্ড টাইপ করুন";
+        return "আপনার আইডি এবং পাসওয়ার্ড দিয়ে প্রবেশ করুন";
+    };
+
     return (
         <div className="min-h-screen flex flex-col bg-zinc-950 font-sans text-zinc-100">
             <Navbar />
@@ -122,39 +187,79 @@ export default function Home() {
                 <div className="w-full max-w-md space-y-8 z-10">
                     <div className="text-center">
                         <h2 className="text-3xl py-2 font-extrabold tracking-tight bg-linear-to-r from-blue-400 via-indigo-200 to-purple-400 bg-clip-text text-transparent sm:text-3xl">
-                            {isRegister ? "নতুন অ্যাকাউন্ট তৈরি করুন" : "অ্যাটেনডেন্স পোর্টালে স্বাগতম"}
+                            {getHeaderTitle()}
                         </h2>
                         <p className="mt-2 text-sm text-zinc-400">
-                            {isRegister ? "আপনার তথ্য দিয়ে ফিলাপ করুন" : "আপনার আইডি এবং পাসওয়ার্ড দিয়ে প্রবেশ করুন"}
+                            {getHeaderSubtitle()}
                         </p>
                     </div>
 
-                    <RoleSelector
-                        role={role}
-                        setRole={setRole}
-                        isRegister={isRegister}
-                        setIsRegister={setIsRegister}
-                    />
+                    {recoveryStep === "login" && (
+                        <RoleSelector
+                            role={role}
+                            setRole={setRole}
+                            isRegister={isRegister}
+                            setIsRegister={setIsRegister}
+                        />
+                    )}
+
+                    {recoverySuccessMsg && (
+                        <div className="mb-6 p-4 rounded-xl bg-green-950/40 border border-green-500/30 text-green-300 text-sm flex items-center gap-3">
+                            <span>✅</span>
+                            <p>{recoverySuccessMsg}</p>
+                        </div>
+                    )}
 
                     <div className="bg-zinc-900/40 border border-zinc-800/80 backdrop-blur-2xl rounded-2xl p-8 shadow-2xl shadow-black/40">
                         {isRegister ? (
-                            <RegisterForm onSubmit={handleRegister} role={role} loading={loading} error={error} isRegister={isRegister} />
+                            <RegisterForm onSubmit={handleRegister} role={role} loading={loading} error={error} />
+                        ) : recoveryStep === "forgot" ? (
+                            <ForgotPasswordForm 
+                                onSubmitEmail={handleRequestOTP} 
+                                onBackToLogin={() => { setRecoveryStep("login"); setError(""); }} 
+                                loading={loading} 
+                                error={error} 
+                            />
+                        ) : recoveryStep === "reset" ? (
+                            <ResetPasswordForm 
+                                onSubmitReset={handleResetPasswordSubmit} 
+                                email={recoveryEmail} 
+                                onBackToLogin={() => { setRecoveryStep("login"); setError(""); }} 
+                                loading={loading} 
+                                error={error} 
+                            />
                         ) : (
-                            <LoginForm onSubmit={handleLogin} loading={loading} error={error} />
+                            <LoginForm 
+                                onSubmit={handleLogin} 
+                                onForgotPassword={() => { setRecoveryStep("forgot"); setError(""); setRecoverySuccessMsg(""); }} 
+                                loading={loading} 
+                                error={error} 
+                            />
                         )}
 
-                        {/* Toggle between login and register (only for student/teacher) */}
-                        {role !== "parent" && role !== "admin" && (
+                        {/* Toggle between login and register (only for student/teacher in login view) */}
+                        {!isRegister && recoveryStep === "login" && role !== "parent" && role !== "admin" && (
                             <div className="mt-6 text-center text-xs">
-                                <span className="text-zinc-500">
-                                    {isRegister ? "ইতিমধ্যে অ্যাকাউন্ট আছে?" : "নতুন অ্যাকাউন্ট প্রয়োজন?"}
-                                </span>{" "}
+                                <span className="text-zinc-500">নতুন অ্যাকাউন্ট প্রয়োজন?</span>{" "}
                                 <button
                                     type="button"
-                                    onClick={() => setIsRegister(!isRegister)}
+                                    onClick={() => setIsRegister(true)}
                                     className="text-blue-400 hover:text-blue-300 font-semibold focus:outline-none underline underline-offset-4"
                                 >
-                                    {isRegister ? "লগইন করুন" : "রেজিস্টার করুন"}
+                                    রেজিস্টার করুন
+                                </button>
+                            </div>
+                        )}
+
+                        {isRegister && (
+                            <div className="mt-6 text-center text-xs">
+                                <span className="text-zinc-500">ইতিমধ্যে অ্যাকাউন্ট আছে?</span>{" "}
+                                <button
+                                    type="button"
+                                    onClick={() => setIsRegister(false)}
+                                    className="text-blue-400 hover:text-blue-300 font-semibold focus:outline-none underline underline-offset-4"
+                                >
+                                    লগইন করুন
                                 </button>
                             </div>
                         )}

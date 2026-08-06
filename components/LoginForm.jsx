@@ -1,21 +1,10 @@
-import { useState } from "react";
-
-export const LoginForm = ({ onSubmit, loading, error }) => {
-    const [showForgotMsg, setShowForgotMsg] = useState(false);
-
+export const LoginForm = ({ onSubmit, onForgotPassword, loading, error }) => {
     return (
         <form onSubmit={onSubmit} className="space-y-6">
             {error && (
                 <div className="mb-6 p-4 rounded-xl bg-red-950/40 border border-red-500/30 text-red-300 text-sm flex items-center gap-3">
                     <span>⚠️</span>
                     <p>{error}</p>
-                </div>
-            )}
-
-            {showForgotMsg && (
-                <div className="p-4 rounded-xl bg-blue-950/40 border border-blue-500/30 text-blue-300 text-xs flex items-start gap-3 animate-pulse">
-                    <span>ℹ️</span>
-                    <p>পাসওয়ার্ড রিসেট করার জন্য আপনার ডিপার্টমেন্ট কো-অর্ডিনেটর অথবা শ্রেণী শিক্ষকের সাথে সরাসরি যোগাযোগ করুন। (Contact coordinator to reset password)</p>
                 </div>
             )}
 
@@ -35,7 +24,7 @@ export const LoginForm = ({ onSubmit, loading, error }) => {
                     <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">পাসওয়ার্ড</label>
                     <button
                         type="button"
-                        onClick={() => setShowForgotMsg(!showForgotMsg)}
+                        onClick={onForgotPassword}
                         className="text-xs text-blue-400 hover:text-blue-300 underline focus:outline-none"
                     >
                         পাসওয়ার্ড ভুলে গেছেন?
