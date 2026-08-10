@@ -33,7 +33,7 @@ export const StudentFields = ({ name, onNameChange, nameError, roll, onRollChang
         </div>
         <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-                <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">শ্রেণী (Class)</label>
+                <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">শ্রেণি (Class)</label>
                 <select
                     name="class"
                     defaultValue="BEd-2026"

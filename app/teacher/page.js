@@ -103,7 +103,7 @@ export default function TeacherDashboard() {
             const location = await getCurrentLocation();
             setLat(location.lat);
             setLng(location.lng);
-            
+
             const data = await api.post("/qr/start", {
                 class: cls,
                 section,
@@ -137,7 +137,7 @@ export default function TeacherDashboard() {
             });
 
             setSuccess("GPS Attendance Session started! Students can now mark their attendance.");
-            
+
             // Auto fetch daily report for this subject
             void fetchDailyReport();
         } catch (err) {
@@ -423,7 +423,7 @@ export default function TeacherDashboard() {
                                     <span className="text-6xl block">📡</span>
                                     <h3 className="text-sm font-bold text-zinc-400">No Active Attendance Session</h3>
                                     <p className="text-xs text-zinc-500 max-w-sm mx-auto">
-                                        হাজিরা শুরু করার জন্য বাম পাশের সেটআপ ফরম থেকে বিষয় ও শাখা সিলেক্ট করে "হাজিরা শুরু করুন" বাটনে ক্লিক করুন। 
+                                        হাজিরা শুরু করার জন্য বাম পাশের সেটআপ ফরম থেকে বিষয় ও শাখা সিলেক্ট করে "হাজিরা শুরু করুন" বাটনে ক্লিক করুন।
                                         এতে ৩ মিনিটের জন্য জিপিএস ভিত্তিক হাজিরা চালু হবে।
                                     </p>
                                 </div>
@@ -433,6 +433,7 @@ export default function TeacherDashboard() {
                 )}
 
                 {/* Tab: Manual Attendance */}
+
                 {activeTab === "manual" && (
                     <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-6">
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
