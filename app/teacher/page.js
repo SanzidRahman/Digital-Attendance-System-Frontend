@@ -23,7 +23,7 @@ const getCurrentLocation = () => new Promise((resolve, reject) => {
 export default function TeacherDashboard() {
     // Session state
     const [session, setSession] = useState(null); // active GPS session details
-    const [timeLeft, setTimeLeft] = useState(180); // 3 minutes default
+    const [timeLeft, setTimeLeft] = useState(600); // 10 minutes default
 
     // Class start inputs
     const [cls, setCls] = useState("BEd-2026");
@@ -41,6 +41,11 @@ export default function TeacherDashboard() {
         "শিক্ষায় তথ্য ও যোগাযোগ পদ্ধতি"
     ];
 
+    const classes = [
+        "BEd-2026",
+        "MEd-2026"
+    ]
+
     // Dedicated Manual Attendance state
     const [manualClass, setManualClass] = useState("BEd-2026");
     const [manualSection, setManualSection] = useState("A");
@@ -56,7 +61,7 @@ export default function TeacherDashboard() {
     // Socket / Timer references
     const socketRef = useRef(null);
     const timerRef = useRef(null);
-    const timeLeftRef = useRef(180);
+    const timeLeftRef = useRef(600);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -126,7 +131,7 @@ export default function TeacherDashboard() {
                 lng: location.lng
             });
 
-            const duration = data.durationSeconds || 180;
+            const duration = data.durationSeconds || 600;
             timeLeftRef.current = duration;
             setTimeLeft(duration);
             setSession({ sessionId: data.sessionId, class: cls, section, subject });
@@ -383,7 +388,9 @@ export default function TeacherDashboard() {
                                             onChange={(e) => setCls(e.target.value)}
                                             className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                         >
-                                            <option value="BEd-2026">BEd-2026</option>
+                                            {classes.map((clas, idx) => (
+                                                <option key={idx} value={clas}>{clas}</option>
+                                            ))}
                                         </select>
                                     </div>
                                     <div className="space-y-1">

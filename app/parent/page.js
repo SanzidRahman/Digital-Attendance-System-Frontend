@@ -9,7 +9,7 @@ export default function ParentDashboard() {
     const [student, setStudent] = useState(null);
     const [history, setHistory] = useState([]);
     const [stats, setStats] = useState({ total: 0, present: 0, percentage: "0.0" });
-    
+
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -182,13 +182,12 @@ export default function ParentDashboard() {
                                                     </td>
                                                     <td className="px-6 py-4 uppercase text-xs font-semibold">{log.method}</td>
                                                     <td className="px-6 py-4">
-                                                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                                                            log.status === "present"
+                                                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${log.status === "present"
                                                                 ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                                                                 : log.status === "late"
-                                                                ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
-                                                                : "bg-red-500/10 text-red-400 border border-red-500/20"
-                                                        }`}>
+                                                                    ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                                                                    : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                            }`}>
                                                             {log.status}
                                                         </span>
                                                     </td>
