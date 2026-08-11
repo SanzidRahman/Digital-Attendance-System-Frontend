@@ -176,16 +176,41 @@ export default function AdminDashboard() {
         setSuccess("");
         setStudents([]);
         try {
+            // 1. Fetch all students in the class/section
             const studentList = await api.get(
                 `/students?class=${manualClass}&section=${manualSection}`
             );
-            setStudents(studentList);
 
-            // Default all students to present
-            const initialStatus = {};
-            studentList.forEach((s) => {
-                initialStatus[s._id] = "present";
+            // 2. Fetch already marked attendance for that class/section/subject/date
+            const report = await api.get(
+                `/attendance/daily-report?class=${manualClass}&section=${manualSection}&subject=${encodeURIComponent(manualSubject)}&date=${manualDate}`
+            );
+
+            const markedStudentsMap = {};
+            (report.records || []).forEach(r => {
+                if (r.student) {
+                    markedStudentsMap[r.student._id] = r;
+                }
             });
+
+            // 3. Set default status to absent, or mark as disabled if GPS checked in
+            const initialStatus = {};
+            const updatedStudentList = studentList.map(s => {
+                const existingRecord = markedStudentsMap[s._id];
+                if (existingRecord && existingRecord.method === "gps") {
+                    s.gpsCheckedIn = true;
+                    s.existingStatus = existingRecord.status;
+                    initialStatus[s._id] = existingRecord.status;
+                } else if (existingRecord && existingRecord.method === "manual") {
+                    s.existingStatus = existingRecord.status;
+                    initialStatus[s._id] = existingRecord.status;
+                } else {
+                    initialStatus[s._id] = "absent"; // default to absent!
+                }
+                return s;
+            });
+
+            setStudents(updatedStudentList);
             setManualRecords(initialStatus);
         } catch (err) {
             setError("শিক্ষার্থীদের তালিকা লোড করতে ব্যর্থ হয়েছে।");
@@ -206,10 +231,16 @@ export default function AdminDashboard() {
         setError("");
         setSuccess("");
         try {
-            const recordsArray = Object.keys(manualRecords).map((id) => ({
-                studentId: id,
-                status: manualRecords[id]
-            }));
+            // Filter out students who are already checked in via GPS
+            const recordsArray = Object.keys(manualRecords)
+                .filter(id => {
+                    const student = students.find(s => s._id === id);
+                    return !student?.gpsCheckedIn;
+                })
+                .map((id) => ({
+                    studentId: id,
+                    status: manualRecords[id]
+                }));
 
             await api.post("/attendance/manual", {
                 class: manualClass,
@@ -690,36 +721,44 @@ export default function AdminDashboard() {
                                                     <td className="px-6 py-4 font-mono font-semibold text-zinc-300">{s.roll}</td>
                                                     <td className="px-6 py-4 text-zinc-100 font-semibold">{s.name}</td>
                                                     <td className="px-6 py-4 flex items-center justify-center gap-4">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleManualStatusSelection(s._id, "present")}
-                                                            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${manualRecords[s._id] === "present"
-                                                                ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/10"
-                                                                : "bg-zinc-950 text-zinc-500 hover:text-zinc-300"
-                                                                }`}
-                                                        >
-                                                            Present
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleManualStatusSelection(s._id, "late")}
-                                                            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${manualRecords[s._id] === "late"
-                                                                ? "bg-yellow-600 text-white shadow-md shadow-yellow-500/10"
-                                                                : "bg-zinc-950 text-zinc-500 hover:text-zinc-300"
-                                                                }`}
-                                                        >
-                                                            Late
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleManualStatusSelection(s._id, "absent")}
-                                                            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${manualRecords[s._id] === "absent"
-                                                                ? "bg-red-600 text-white shadow-md shadow-red-500/10"
-                                                                : "bg-zinc-950 text-zinc-500 hover:text-zinc-300"
-                                                                }`}
-                                                        >
-                                                            Absent
-                                                        </button>
+                                                        {s.gpsCheckedIn ? (
+                                                            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                                📡 GPS Checked-In ({s.existingStatus.toUpperCase()})
+                                                            </span>
+                                                        ) : (
+                                                            <>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleManualStatusSelection(s._id, "present")}
+                                                                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${manualRecords[s._id] === "present"
+                                                                        ? "bg-emerald-600 text-white shadow-md shadow-emerald-500/10"
+                                                                        : "bg-zinc-950 text-zinc-500 hover:text-zinc-300"
+                                                                        }`}
+                                                                >
+                                                                    Present
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleManualStatusSelection(s._id, "late")}
+                                                                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${manualRecords[s._id] === "late"
+                                                                        ? "bg-yellow-600 text-white shadow-md shadow-yellow-500/10"
+                                                                        : "bg-zinc-950 text-zinc-500 hover:text-zinc-300"
+                                                                        }`}
+                                                                >
+                                                                    Late
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleManualStatusSelection(s._id, "absent")}
+                                                                    className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150 ${manualRecords[s._id] === "absent"
+                                                                        ? "bg-red-600 text-white shadow-md shadow-red-500/10"
+                                                                        : "bg-zinc-950 text-zinc-500 hover:text-zinc-300"
+                                                                        }`}
+                                                                >
+                                                                    Absent
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))}

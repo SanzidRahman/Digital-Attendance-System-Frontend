@@ -32,6 +32,21 @@ export default function TeacherDashboard() {
     const [lat, setLat] = useState(24.7654);
     const [lng, setLng] = useState(90.4014);
 
+    // Subjects List
+    const subjects = [
+        "অ্যাডভান্স আইসিটি",
+        "মাধ্যমিক শিক্ষা",
+        "সক্রিয় শিখন পদ্ধতি ও কৌশল",
+        "শিখন ও শিখনযাচাই",
+        "শিক্ষায় তথ্য ও যোগাযোগ পদ্ধতি"
+    ];
+
+    // Dedicated Manual Attendance state
+    const [manualClass, setManualClass] = useState("BEd-2026");
+    const [manualSection, setManualSection] = useState("A");
+    const [manualSubject, setManualSubject] = useState("অ্যাডভান্স আইসিটি");
+    const [manualDate, setManualDate] = useState(new Date().toISOString().slice(0, 10));
+
     // Manual Attendance / Logs state
     const [students, setStudents] = useState([]);
     const [manualRecords, setManualRecords] = useState({}); // { studentId: "present"|"absent"|"late" }
@@ -82,7 +97,6 @@ export default function TeacherDashboard() {
             setTimeLeft(remaining);
 
             if (remaining <= 0) {
-                // Session expired, clear timer
                 if (timerRef.current) clearInterval(timerRef.current);
                 setSuccess("Attendance session has closed automatically (3 minutes limit reached).");
             }
@@ -122,7 +136,6 @@ export default function TeacherDashboard() {
             socketRef.current = socket;
             socket.emit("session:join", data.sessionId);
 
-            // Listen for real-time check-ins to update the local log
             socket.on("attendance:new", (log) => {
                 setDailyLogs((prev) => [
                     {
@@ -137,8 +150,6 @@ export default function TeacherDashboard() {
             });
 
             setSuccess("GPS Attendance Session started! Students can now mark their attendance.");
-
-            // Auto fetch daily report for this subject
             void fetchDailyReport();
         } catch (err) {
             setError(err.message || "Failed to start class session.");
@@ -177,17 +188,44 @@ export default function TeacherDashboard() {
 
     const loadStudentList = async () => {
         setError("");
+        setSuccess("");
+        setStudents([]);
         setLoading(true);
         try {
-            const studentList = await api.get(`/students?class=${encodeURIComponent(cls)}&section=${encodeURIComponent(section)}`);
-            setStudents(studentList);
+            // 1. Fetch student list
+            const studentList = await api.get(
+                `/students?class=${encodeURIComponent(manualClass)}&section=${encodeURIComponent(manualSection)}`
+            );
 
-            // Set default status to present
-            const records = {};
-            studentList.forEach(s => {
-                records[s._id] = "present";
+            // 2. Fetch existing daily report to check GPS attendance status
+            const report = await api.get(
+                `/attendance/daily-report?class=${encodeURIComponent(manualClass)}&section=${encodeURIComponent(manualSection)}&subject=${encodeURIComponent(manualSubject)}&date=${manualDate}`
+            );
+
+            const markedMap = {};
+            (report.records || []).forEach(r => {
+                if (r.student) markedMap[r.student._id] = r;
             });
-            setManualRecords(records);
+
+            // 3. Mark GPS checked-in students, and default others to absent
+            const initialStatus = {};
+            const updatedList = studentList.map(s => {
+                const existing = markedMap[s._id];
+                if (existing && existing.method === "gps") {
+                    s.gpsCheckedIn = true;
+                    s.existingStatus = existing.status;
+                    initialStatus[s._id] = existing.status;
+                } else if (existing && existing.method === "manual") {
+                    s.existingStatus = existing.status;
+                    initialStatus[s._id] = existing.status;
+                } else {
+                    initialStatus[s._id] = "absent"; // default to absent!
+                }
+                return s;
+            });
+
+            setStudents(updatedList);
+            setManualRecords(initialStatus);
         } catch (err) {
             setError("Failed to load students list.");
         } finally {
@@ -207,19 +245,28 @@ export default function TeacherDashboard() {
         setSuccess("");
         setLoading(true);
         try {
-            const recordsArray = Object.keys(manualRecords).map((id) => ({
-                studentId: id,
-                status: manualRecords[id]
-            }));
+            // Filter out GPS checked-in students from manual submission array
+            const recordsArray = Object.keys(manualRecords)
+                .filter(id => {
+                    const student = students.find(s => s._id === id);
+                    return !student?.gpsCheckedIn;
+                })
+                .map((id) => ({
+                    studentId: id,
+                    status: manualRecords[id]
+                }));
 
             await api.post("/attendance/manual", {
-                class: cls,
-                section,
-                subject,
+                class: manualClass,
+                section: manualSection,
+                subject: manualSubject,
+                date: manualDate,
                 records: recordsArray
             });
 
             setSuccess("Manual attendance recorded successfully!");
+            setStudents([]);
+            setManualRecords({});
             void fetchDailyReport();
         } catch (err) {
             setError(err.message || "Failed to save attendance.");
@@ -279,6 +326,8 @@ export default function TeacherDashboard() {
                             key={tab}
                             onClick={() => {
                                 setActiveTab(tab);
+                                setError("");
+                                setSuccess("");
                                 if (tab === "manual") void loadStudentList();
                                 if (tab === "reports") void fetchDailyReport();
                             }}
@@ -319,11 +368,9 @@ export default function TeacherDashboard() {
                                         onChange={(e) => setSubject(e.target.value)}
                                         className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                     >
-                                        <option value="অ্যাডভান্স আইসিটি">অ্যাডভান্স আইসিটি</option>
-                                        <option value="মাধ্যমিক শিক্ষা">মাধ্যমিক শিক্ষা</option>
-                                        <option value="সক্রিয় শিখন পদ্ধতি ও কৌশল">সক্রিয় শিখন পদ্ধতি ও কৌশল</option>
-                                        <option value="শিখন ও শিখনযাচাই">শিখন ও শিখনযাচাই</option>
-                                        <option value="শিক্ষায় তথ্য ও যোগাযোগ পদ্ধতি">শিক্ষায় তথ্য ও যোগাযোগ পদ্ধতি</option>
+                                        {subjects.map((sub, idx) => (
+                                            <option key={idx} value={sub}>{sub}</option>
+                                        ))}
                                     </select>
                                 </div>
 
@@ -437,26 +484,88 @@ export default function TeacherDashboard() {
                 )}
 
                 {/* Tab: Manual Attendance */}
-
                 {activeTab === "manual" && (
                     <div className="bg-zinc-900/30 border border-zinc-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                            <h3 className="text-md font-bold text-zinc-200">
-                                ✏️ ম্যানুয়াল হাজিরা তালিকা (Class {cls}-{section} / {subject})
-                            </h3>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-850 pb-4">
+                            <div>
+                                <h3 className="text-md font-bold text-zinc-200">
+                                    ✏️ ম্যানুয়াল হাজিরা মার্কিং (Manual Attendance System)
+                                </h3>
+                                <p className="text-[11px] text-zinc-500 mt-0.5">শিক্ষার্থীদের তালিকা লোড করে সরাসরি হাজিরা সংরক্ষণ করুন</p>
+                            </div>
+                        </div>
+
+                        {/* Manual Filters */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pb-4">
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শ্রেণী (Class)</label>
+                                <select
+                                    value={manualClass}
+                                    onChange={(e) => setManualClass(e.target.value)}
+                                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500"
+                                >
+                                    <option value="BEd-2026">BEd-2026</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শাখা (Section)</label>
+                                <select
+                                    value={manualSection}
+                                    onChange={(e) => setManualSection(e.target.value)}
+                                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500"
+                                >
+                                    <option value="A">Section A</option>
+                                    <option value="B">Section B</option>
+                                    <option value="C">Section C</option>
+                                    <option value="D">Section D</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">বিষয় (Subject)</label>
+                                <select
+                                    value={manualSubject}
+                                    onChange={(e) => setManualSubject(e.target.value)}
+                                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500"
+                                >
+                                    {subjects.map((sub, idx) => (
+                                        <option key={idx} value={sub}>{sub}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">তারিখ (Date)</label>
+                                <input
+                                    type="date"
+                                    value={manualDate}
+                                    onChange={(e) => setManualDate(e.target.value)}
+                                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2 text-xs text-zinc-300 focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-start gap-3">
                             <button
-                                onClick={submitManualAttendance}
-                                disabled={students.length === 0 || loading}
-                                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl px-5 py-2.5 shadow-lg shadow-emerald-500/10 transition-all duration-200 hover:scale-103"
+                                onClick={loadStudentList}
+                                disabled={loading}
+                                className="bg-zinc-800 border border-zinc-700 hover:border-zinc-650 text-zinc-200 text-xs font-semibold rounded-xl px-5 py-2.5 transition-all duration-200"
                             >
-                                ✅ হাজিরা সংরক্ষণ করুন (Save Attendance)
+                                👥 শিক্ষার্থীদের তালিকা লোড করুন
                             </button>
+                            {students.length > 0 && (
+                                <button
+                                    onClick={submitManualAttendance}
+                                    disabled={loading}
+                                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl px-5 py-2.5 shadow-lg shadow-emerald-500/10 transition-all duration-200 hover:scale-103"
+                                >
+                                    💾 হাজিরা সংরক্ষণ করুন (Save Attendance)
+                                </button>
+                            )}
                         </div>
 
                         {students.length === 0 ? (
-                            <p className="text-zinc-500 text-center py-12 text-sm">কোনো শিক্ষার্থী পাওয়া যায়নি। ক্লাস এবং শাখা ভ্যালিড করুন।</p>
+                            <p className="text-zinc-500 text-center py-12 text-sm">কোনো শিক্ষার্থী লোড করা হয়নি। উপরের অপশন সিলেক্ট করে লোড বাটনে ক্লিক করুন।</p>
                         ) : (
-                            <div className="overflow-x-auto">
+                            <div className="overflow-x-auto border-t border-zinc-850 pt-4 mt-4">
                                 <table className="w-full text-sm text-left text-zinc-400">
                                     <thead className="text-xs text-zinc-400 uppercase border-b border-zinc-850 bg-zinc-950/40">
                                         <tr>
@@ -474,22 +583,28 @@ export default function TeacherDashboard() {
                                                 <td className="px-6 py-4 font-mono">{student.studentId}</td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex justify-center gap-2">
-                                                        {["present", "late", "absent"].map((status) => (
-                                                            <button
-                                                                key={status}
-                                                                onClick={() => handleManualStatusChange(student._id, status)}
-                                                                className={`px-3 py-1 rounded-full text-xs font-semibold capitalize border transition-all duration-200 ${manualRecords[student._id] === status
-                                                                    ? status === "present"
-                                                                        ? "bg-emerald-500/15 border-emerald-500 text-emerald-400 shadow-md shadow-emerald-500/5"
-                                                                        : status === "late"
-                                                                            ? "bg-yellow-500/15 border-yellow-500 text-yellow-400 shadow-md shadow-yellow-500/5"
-                                                                            : "bg-red-500/15 border-red-500 text-red-400 shadow-md shadow-red-500/5"
-                                                                    : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300"
-                                                                    }`}
-                                                            >
-                                                                {status}
-                                                            </button>
-                                                        ))}
+                                                        {student.gpsCheckedIn ? (
+                                                            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                                                📡 GPS Checked-In ({student.existingStatus.toUpperCase()})
+                                                            </span>
+                                                        ) : (
+                                                            ["present", "late", "absent"].map((status) => (
+                                                                <button
+                                                                    key={status}
+                                                                    onClick={() => handleManualStatusChange(student._id, status)}
+                                                                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold capitalize border transition-all duration-250 ${manualRecords[student._id] === status
+                                                                        ? status === "present"
+                                                                            ? "bg-emerald-500/15 border-emerald-500 text-emerald-400 shadow-md shadow-emerald-500/5"
+                                                                            : status === "late"
+                                                                                ? "bg-yellow-500/15 border-yellow-500 text-yellow-400 shadow-md shadow-yellow-500/5"
+                                                                                : "bg-red-500/15 border-red-500 text-red-400 shadow-md shadow-red-500/5"
+                                                                        : "bg-zinc-950 border-zinc-850 text-zinc-500 hover:text-zinc-300"
+                                                                        }`}
+                                                                >
+                                                                    {status}
+                                                                </button>
+                                                            ))
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
