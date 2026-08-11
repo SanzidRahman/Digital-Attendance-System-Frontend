@@ -28,7 +28,7 @@ export default function TeacherDashboard() {
     // Class start inputs
     const [cls, setCls] = useState("BEd-2026");
     const [section, setSection] = useState("All");
-    const [subject, setSubject] = useState("Advance ICT");
+    const [subject, setSubject] = useState("অ্যাডভান্স আইসিটি");
     const [lat, setLat] = useState(24.7654);
     const [lng, setLng] = useState(90.4014);
 
@@ -319,7 +319,11 @@ export default function TeacherDashboard() {
                                         onChange={(e) => setSubject(e.target.value)}
                                         className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500 disabled:opacity-50"
                                     >
-                                        <option value="Advance ICT">Advance ICT</option>
+                                        <option value="অ্যাডভান্স আইসিটি">অ্যাডভান্স আইসিটি</option>
+                                        <option value="মাধ্যমিক শিক্ষা">মাধ্যমিক শিক্ষা</option>
+                                        <option value="সক্রিয় শিখন পদ্ধতি ও কৌশল">সক্রিয় শিখন পদ্ধতি ও কৌশল</option>
+                                        <option value="শিখন ও শিখনযাচাই">শিখন ও শিখনযাচাই</option>
+                                        <option value="শিক্ষায় তথ্য ও যোগাযোগ পদ্ধতি">শিক্ষায় তথ্য ও যোগাযোগ পদ্ধতি</option>
                                     </select>
                                 </div>
 
