@@ -46,7 +46,7 @@ export default function AttendanceCorrection() {
         setSuccess("");
         try {
             await api.patch(`/attendance/${recordId}`, { status: newStatus });
-            
+
             // Update local state
             setUpdateRecords((prev) =>
                 prev.map((r) => (r._id === recordId ? { ...r, status: newStatus } : r))
@@ -195,7 +195,7 @@ export default function AttendanceCorrection() {
                                             }`}>
                                             {r.status === "present" ? "Present" : r.status === "late" ? "Late" : "Absent"}
                                         </span>
-                                        
+
                                         <select
                                             value={r.status}
                                             onChange={(e) => handleRecordStatusChange(r._id, e.target.value)}
