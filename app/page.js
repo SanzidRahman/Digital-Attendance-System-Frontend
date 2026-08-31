@@ -80,6 +80,7 @@ export default function Home() {
             payload.profileData = {
                 roll: formData.get("roll"),
                 class: formData.get("class"),
+                year: formData.get("year"),
                 section: formData.get("section"),
             };
         } else if (role === "teacher") {

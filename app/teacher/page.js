@@ -26,7 +26,8 @@ export default function TeacherDashboard() {
     const [timeLeft, setTimeLeft] = useState(600); // 10 minutes default
 
     // Class start inputs
-    const [cls, setCls] = useState("BEd-2026");
+    const [cls, setCls] = useState("BEd");
+    const [year, setYear] = useState("2026");
     const [section, setSection] = useState("All");
     const [subject, setSubject] = useState("অ্যাডভান্স আইসিটি");
     const [lat, setLat] = useState(24.7654);
@@ -42,12 +43,14 @@ export default function TeacherDashboard() {
     ];
 
     const classes = [
-        "BEd-2026",
-        "MEd-2026"
+        "BEd",
+        "MEd",
+        "BEd-Regular"
     ]
 
     // Dedicated Manual Attendance state
-    const [manualClass, setManualClass] = useState("BEd-2026");
+    const [manualClass, setManualClass] = useState("BEd");
+    const [manualYear, setManualYear] = useState("2026");
     const [manualSection, setManualSection] = useState("A");
     const [manualSubject, setManualSubject] = useState("অ্যাডভান্স আইসিটি");
     const [manualDate, setManualDate] = useState(new Date().toISOString().slice(0, 10));
@@ -103,7 +106,7 @@ export default function TeacherDashboard() {
 
             if (remaining <= 0) {
                 if (timerRef.current) clearInterval(timerRef.current);
-                setSuccess("Attendance session has closed automatically (3 minutes limit reached).");
+                setSuccess("Attendance session has closed automatically (10 minutes limit reached).");
             }
         };
 
@@ -125,6 +128,7 @@ export default function TeacherDashboard() {
 
             const data = await api.post("/qr/start", {
                 class: cls,
+                year,
                 section,
                 subject,
                 lat: location.lat,
@@ -134,7 +138,7 @@ export default function TeacherDashboard() {
             const duration = data.durationSeconds || 600;
             timeLeftRef.current = duration;
             setTimeLeft(duration);
-            setSession({ sessionId: data.sessionId, class: cls, section, subject });
+            setSession({ sessionId: data.sessionId, class: cls, year, section, subject });
 
             // Connect Socket.io & Join session room
             const socket = io(SOCKET_URL);
@@ -199,12 +203,12 @@ export default function TeacherDashboard() {
         try {
             // 1. Fetch student list
             const studentList = await api.get(
-                `/students?class=${encodeURIComponent(manualClass)}&section=${encodeURIComponent(manualSection)}`
+                `/students?class=${encodeURIComponent(manualClass)}&year=${encodeURIComponent(manualYear)}&section=${encodeURIComponent(manualSection)}`
             );
 
             // 2. Fetch existing daily report to check GPS attendance status
             const report = await api.get(
-                `/attendance/daily-report?class=${encodeURIComponent(manualClass)}&section=${encodeURIComponent(manualSection)}&subject=${encodeURIComponent(manualSubject)}&date=${manualDate}`
+                `/attendance/daily-report?class=${encodeURIComponent(manualClass)}&year=${encodeURIComponent(manualYear)}&section=${encodeURIComponent(manualSection)}&subject=${encodeURIComponent(manualSubject)}&date=${manualDate}`
             );
 
             const markedMap = {};
@@ -263,6 +267,7 @@ export default function TeacherDashboard() {
 
             await api.post("/attendance/manual", {
                 class: manualClass,
+                year: manualYear,
                 section: manualSection,
                 subject: manualSubject,
                 date: manualDate,
@@ -282,7 +287,7 @@ export default function TeacherDashboard() {
 
     const fetchDailyReport = async () => {
         try {
-            const data = await api.get(`/attendance/daily-report?class=${encodeURIComponent(cls)}&section=${encodeURIComponent(section)}&subject=${encodeURIComponent(subject)}`);
+            const data = await api.get(`/attendance/daily-report?class=${encodeURIComponent(cls)}&year=${encodeURIComponent(year)}&section=${encodeURIComponent(section)}&subject=${encodeURIComponent(subject)}`);
             setDailyLogs(data.records);
         } catch (err) {
             console.error(err);
@@ -316,7 +321,7 @@ export default function TeacherDashboard() {
 
                 {/* Header */}
                 <div className="border-b border-zinc-800 pb-6">
-                    <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-indigo-200 to-purple-400 bg-clip-text text-transparent sm:text-3xl">
+                    <h1 className="text-2xl font-bold bg-linear-to-r from-blue-400 via-indigo-200 to-purple-400 bg-clip-text text-transparent sm:text-3xl">
                         👨‍🏫 শিক্ষক প্যানেল (Teacher Dashboard)
                     </h1>
                     <p className="text-xs text-zinc-400 mt-1">
@@ -392,6 +397,10 @@ export default function TeacherDashboard() {
                                                 <option key={idx} value={clas}>{clas}</option>
                                             ))}
                                         </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শিক্ষাবর্ষ (Year)</label>
+                                        <input type="text" inputMode="numeric" maxLength={4} disabled={!!session} value={year} onChange={(e) => setYear(e.target.value.replace(/[^0-9]/g, ""))} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500 disabled:opacity-50" />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শাখা (Section)</label>
@@ -482,7 +491,7 @@ export default function TeacherDashboard() {
                                     <h3 className="text-sm font-bold text-zinc-400">No Active Attendance Session</h3>
                                     <p className="text-xs text-zinc-500 max-w-sm mx-auto">
                                         হাজিরা শুরু করার জন্য বাম পাশের সেটআপ ফরম থেকে বিষয় ও শাখা সিলেক্ট করে "হাজিরা শুরু করুন" বাটনে ক্লিক করুন।
-                                        এতে ৩ মিনিটের জন্য জিপিএস ভিত্তিক হাজিরা চালু হবে।
+                                        এতে ১০ মিনিটের জন্য জিপিএস ভিত্তিক হাজিরা চালু হবে।
                                     </p>
                                 </div>
                             )}
@@ -503,7 +512,7 @@ export default function TeacherDashboard() {
                         </div>
 
                         {/* Manual Filters */}
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pb-4">
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 pb-4">
                             <div className="space-y-1">
                                 <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শ্রেণী (Class)</label>
                                 <select
@@ -511,8 +520,12 @@ export default function TeacherDashboard() {
                                     onChange={(e) => setManualClass(e.target.value)}
                                     className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500"
                                 >
-                                    <option value="BEd-2026">BEd-2026</option>
+                                    {classes.map((clas) => <option key={clas} value={clas}>{clas}</option>)}
                                 </select>
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শিক্ষাবর্ষ (Year)</label>
+                                <input type="text" inputMode="numeric" maxLength={4} value={manualYear} onChange={(e) => setManualYear(e.target.value.replace(/[^0-9]/g, ""))} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500" />
                             </div>
                             <div className="space-y-1">
                                 <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শাখা (Section)</label>

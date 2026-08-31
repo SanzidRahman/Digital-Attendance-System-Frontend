@@ -4,7 +4,8 @@ import { useState } from "react";
 import api from "@/components/api";
 
 export default function AttendanceCorrection() {
-    const [updateClass, setUpdateClass] = useState("BEd-2026");
+    const [updateClass, setUpdateClass] = useState("BEd");
+    const [updateYear, setUpdateYear] = useState("2026");
     const [updateSection, setUpdateSection] = useState("All");
     const [updateSubject, setUpdateSubject] = useState("অ্যাডভান্স আইসিটি");
     const [updateFromDate, setUpdateFromDate] = useState(new Date().toISOString().slice(0, 10));
@@ -28,7 +29,7 @@ export default function AttendanceCorrection() {
         setSuccess("");
         try {
             const res = await api.get(
-                `/attendance/daily-report?class=${updateClass}&section=${updateSection}&subject=${encodeURIComponent(updateSubject)}&from=${updateFromDate}&to=${updateToDate}`
+                `/attendance/daily-report?class=${updateClass}&year=${updateYear}&section=${updateSection}&subject=${encodeURIComponent(updateSubject)}&from=${updateFromDate}&to=${updateToDate}`
             );
             setUpdateRecords(res.records || []);
             if ((res.records || []).length === 0) {
@@ -82,7 +83,7 @@ export default function AttendanceCorrection() {
 
             {/* Filter Card */}
             <div className="bg-zinc-900/20 border border-zinc-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                     <div className="space-y-1">
                         <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শ্রেণী (Class)</label>
                         <select
@@ -90,8 +91,14 @@ export default function AttendanceCorrection() {
                             onChange={(e) => setUpdateClass(e.target.value)}
                             className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500"
                         >
-                            <option value="BEd-2026">BEd-2026</option>
+                            <option value="BEd">BEd</option>
+                            <option value="MEd">MEd</option>
+                            <option value="BEd-Regular">BEd-Regular</option>
                         </select>
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শিক্ষাবর্ষ (Year)</label>
+                        <input type="text" inputMode="numeric" maxLength={4} value={updateYear} onChange={(e) => setUpdateYear(e.target.value.replace(/[^0-9]/g, ""))} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500" />
                     </div>
                     <div className="space-y-1">
                         <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শাখা (Section)</label>

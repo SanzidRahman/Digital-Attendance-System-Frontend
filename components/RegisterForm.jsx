@@ -1,15 +1,18 @@
 import { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { StudentFields } from "./StudentFields";
 import { TeacherFields } from "./TeacherFields";
 
 export const RegisterForm = ({ onSubmit, role, loading, error: serverError }) => {
     const [name, setName] = useState("");
     const [nameError, setNameError] = useState("");
-    
+
     const [roll, setRoll] = useState("");
-    
+    const [year, setYear] = useState("");
+
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [passwordError, setPasswordError] = useState("");
 
     const handleNameChange = (e) => {
@@ -28,6 +31,11 @@ export const RegisterForm = ({ onSubmit, role, loading, error: serverError }) =>
         const cleaned = val.replace(/[^0-9]/g, "");
         setRoll(cleaned);
     };
+    const handleYearChange = (val) => {
+        // Allow only English digits
+        const cleaned = val.replace(/[^0-9]/g, "");
+        setYear(cleaned);
+    };
 
     const handleRollBlur = () => {
         if (roll) {
@@ -43,6 +51,16 @@ export const RegisterForm = ({ onSubmit, role, loading, error: serverError }) =>
         // Final checks
         if (/[\u0980-\u09FF]/.test(name)) {
             setNameError("ইংরেজিতে আপনার নাম লিখেন");
+            return;
+        }
+
+        if (role === "student" && !/^\d{3}$/.test(roll)) {
+            setPasswordError("Roll number must contain 3 digits.");
+            return;
+        }
+
+        if (role === "student" && !/^\d{4}$/.test(year)) {
+            setPasswordError("Academic year must contain 4 digits.");
             return;
         }
 
@@ -73,6 +91,8 @@ export const RegisterForm = ({ onSubmit, role, loading, error: serverError }) =>
                     roll={roll}
                     onRollChange={handleRollChange}
                     onRollBlur={handleRollBlur}
+                    year={year}
+                    onYearChange={handleYearChange}
                 />
             )}
             {role === "teacher" && (
@@ -108,18 +128,37 @@ export const RegisterForm = ({ onSubmit, role, loading, error: serverError }) =>
                     />
                 </div>
 
+
                 <div className="space-y-2">
-                    <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">কনফার্ম পাসওয়ার্ড</label>
-                    <input
-                        type="password"
-                        name="confirmPassword"
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full bg-zinc-950/80 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 text-zinc-100 placeholder-zinc-600 transition-all duration-200"
-                    />
+                    <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+                        কনফার্ম পাসওয়ার্ড
+                    </label>
+
+                    <div className="relative">
+                        <input
+                            type={showConfirmPassword ? "text" : "password"}
+                            name="confirmPassword"
+                            required
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="••••••••"
+                            className="w-full bg-zinc-950/80 border border-zinc-800 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:border-blue-500 text-zinc-100 placeholder-zinc-600 transition-all duration-200"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword((visible) => !visible)}
+                            aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                            title={showConfirmPassword ? "Hide password" : "Show password"}
+                            className="absolute inset-y-0 right-4 flex items-center text-zinc-400 hover:text-zinc-200 focus:outline-none"
+                        >
+                            {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                    </div>
                 </div>
+
+
+
+
             </div>
 
             <button

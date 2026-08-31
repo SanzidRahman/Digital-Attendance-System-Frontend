@@ -4,7 +4,8 @@ import { useState } from "react";
 import api from "@/components/api";
 
 export default function ManualAttendance() {
-    const [manualClass, setManualClass] = useState("BEd-2026");
+    const [manualClass, setManualClass] = useState("BEd");
+    const [manualYear, setManualYear] = useState("2026");
     const [manualSection, setManualSection] = useState("A");
     const [manualSubject, setManualSubject] = useState("অ্যাডভান্স আইসিটি");
     const [manualDate, setManualDate] = useState(new Date().toISOString().slice(0, 10));
@@ -30,12 +31,12 @@ export default function ManualAttendance() {
         try {
             // 1. Fetch all students in the class/section
             const studentList = await api.get(
-                `/students?class=${manualClass}&section=${manualSection}`
+                `/students?class=${manualClass}&year=${manualYear}&section=${manualSection}`
             );
 
             // 2. Fetch already marked attendance for that class/section/subject/date
             const report = await api.get(
-                `/attendance/daily-report?class=${manualClass}&section=${manualSection}&subject=${encodeURIComponent(manualSubject)}&date=${manualDate}`
+                `/attendance/daily-report?class=${manualClass}&year=${manualYear}&section=${manualSection}&subject=${encodeURIComponent(manualSubject)}&date=${manualDate}`
             );
 
             const markedStudentsMap = {};
@@ -96,6 +97,7 @@ export default function ManualAttendance() {
 
             await api.post("/attendance/manual", {
                 class: manualClass,
+                year: manualYear,
                 section: manualSection,
                 subject: manualSubject,
                 date: manualDate,
@@ -138,7 +140,7 @@ export default function ManualAttendance() {
 
             {/* Filter Setup */}
             <div className="bg-zinc-900/20 border border-zinc-800/80 rounded-2xl p-6 shadow-xl backdrop-blur-xl space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div className="space-y-1">
                         <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শ্রেণী (Class)</label>
                         <select
@@ -146,8 +148,14 @@ export default function ManualAttendance() {
                             onChange={(e) => setManualClass(e.target.value)}
                             className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500"
                         >
-                            <option value="BEd-2026">BEd-2026</option>
+                            <option value="BEd">BEd</option>
+                            <option value="MEd">MEd</option>
+                            <option value="BEd-Regular">BEd-Regular</option>
                         </select>
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শিক্ষাবর্ষ (Year)</label>
+                        <input type="text" inputMode="numeric" maxLength={4} value={manualYear} onChange={(e) => setManualYear(e.target.value.replace(/[^0-9]/g, ""))} className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-xs text-zinc-300 focus:outline-none focus:border-blue-500" />
                     </div>
                     <div className="space-y-1">
                         <label className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">শাখা (Section)</label>
